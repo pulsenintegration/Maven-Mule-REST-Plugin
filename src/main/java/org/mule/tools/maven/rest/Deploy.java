@@ -32,6 +32,16 @@ public class Deploy extends AbstractMojo {
 	 * @required
 	 */
 	protected File outputDirectory;
+	
+	/**
+	 * Directory containing the app resources.
+	 * 
+	 * @parameter property="appDirectory"
+	 *            default-value="${basedir}/src/main/app"
+	 * @required
+	 */
+	protected File appDirectory;	
+	
 	/**
 	 * Name of the generated Mule App.
 	 * 
@@ -78,15 +88,6 @@ public class Deploy extends AbstractMojo {
 	 * @required
 	 */
 	protected String password;
-
-	/**
-	 * Directory containing the app resources.
-	 * 
-	 * @parameter property="appDirectory"
-	 *            default-value="${basedir}/src/main/app"
-	 * @required
-	 */
-	protected File appDirectory;
 
 	/**
 	 * MMC (Mule Management Console) URL
