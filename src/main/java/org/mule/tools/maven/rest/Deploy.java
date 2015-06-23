@@ -97,10 +97,10 @@ public class Deploy extends AbstractMojo {
 	protected URL muleApiUrl;
 
 	/**
-	 * @parameter property="serverGroup"
+	 * @parameter property="serverOrGroup"
 	 * @required
 	 */
-	protected String serverGroup;
+	protected String serverOrGroup;
 
 	private MuleRest _muleRest;
 
@@ -130,14 +130,14 @@ public class Deploy extends AbstractMojo {
 		if (finalName == null) {
 			throw new MojoFailureException("finalName not set.");
 		}
-		if (serverGroup == null) {
-			throw new MojoFailureException("serverGroup not set.");
+		if (serverOrGroup == null) {
+			throw new MojoFailureException("serverOrGroup not set.");
 		}
 		try {
 			validateProject(appDirectory);
 			_muleRest = buildMuleRest();
 			String versionId = _muleRest.restfullyUploadRepository(name, version, getMuleZipFile(outputDirectory, finalName));
-			String deploymentId = _muleRest.restfullyCreateDeployment(serverGroup, deploymentName, versionId);
+			String deploymentId = _muleRest.restfullyCreateDeployment(serverOrGroup, deploymentName, versionId);
 			_muleRest.restfullyDeployDeploymentById(deploymentId);
 		} catch (Exception e) {
 			throw new MojoFailureException("Error in attempting to deploy archive: " + e.toString(), e);
