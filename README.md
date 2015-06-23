@@ -53,7 +53,7 @@ In order to post to the Mule Repository, you need only these permissions:
 	<td>
 		The URL of the Mule MMC API (usually .../api)
 	<td>
-		http://localhost:8585/mmc/api
+		
 <tr>
 	<td>
 		name
