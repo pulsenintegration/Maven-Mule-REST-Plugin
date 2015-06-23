@@ -74,7 +74,7 @@ public class MuleRest {
 	}
 
 	public String restfullyCreateDeployment(String serverGroup, String name, String versionId) throws IOException {
-		Set<String> serversIds = restfullyGetServers(serverGroup);
+		Set<String> serversIds = restfullyGetServerIdsInGroup(serverGroup);
 		if (serversIds.isEmpty()) {
 			throw new IllegalArgumentException("No server found into group : " + serverGroup);
 		}
@@ -192,7 +192,7 @@ public class MuleRest {
 		return applicationId;
 	}
 
-	public final String restfullyGetServerGroupId(String serverGroup) throws IOException {
+	public final String restfullyGetServerGroupId(String serverGroupName) throws IOException {
 		String serverGroupId = null;
 
 		WebClient webClient = getWebClient("serverGroups");
@@ -203,13 +203,13 @@ public class MuleRest {
 			JsonNode jsonNode = OBJECT_MAPPER.readTree(responseStream);
 			JsonNode groupsNode = jsonNode.path("data");
 			for (JsonNode groupNode : groupsNode) {
-				if (serverGroup.equals(groupNode.path("name").asText())) {
+				if (serverGroupName.equals(groupNode.path("name").asText())) {
 					serverGroupId = groupNode.path("id").asText();
 					break;
 				}
 			}
 			if (serverGroupId == null) {
-				throw new IllegalArgumentException("no server group found having the name " + serverGroup);
+				throw new IllegalArgumentException("no server group found having the name " + serverGroupName);
 			}
 		} finally {
 			webClient.close();
@@ -217,7 +217,13 @@ public class MuleRest {
 		return serverGroupId;
 	}
 
-	public Set<String> restfullyGetServers(String serverGroup) throws IOException {
+	/**
+	 * Returns ids of all servers in given group name
+	 * @param serverGroupName
+	 * @return
+	 * @throws IOException
+	 */
+	public Set<String> restfullyGetServerIdsInGroup(String serverGroupName) throws IOException {
 		Set<String> serversId = new TreeSet<String>();
 		WebClient webClient = getWebClient("servers");
 
@@ -232,7 +238,7 @@ public class MuleRest {
 
 				JsonNode groupsNode = serverNode.path("groups");
 				for (JsonNode groupNode : groupsNode) {
-					if (serverGroup.equals(groupNode.path("name").asText())) {
+					if (serverGroupName.equals(groupNode.path("name").asText())) {
 						serversId.add(serverId);
 					}
 				}

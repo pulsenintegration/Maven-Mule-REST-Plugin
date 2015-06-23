@@ -329,7 +329,7 @@ public class MuleRestTest {
 		String serverId = UUID.randomUUID().toString();
 
 		stubGetServers(serverGroupToFind, serverId);
-		Set<String> servers = muleRest.restfullyGetServers(serverGroupToFind);
+		Set<String> servers = muleRest.restfullyGetServerIdsInGroup(serverGroupToFind);
 		Assert.assertTrue("Server Id doesn't match", servers.contains(serverId));
 		verifyGetServers();
 	}
