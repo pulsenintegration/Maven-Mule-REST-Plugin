@@ -27,15 +27,18 @@ public class Deploy extends AbstractMojo {
     /**
      * Directory containing the generated Mule App.
      * 
-     * @parameter expression="${project.build.directory}"
+     * @parameter
+     * property="project.build.directory"
      * @required
      */
     protected File outputDirectory;
     /**
      * Name of the generated Mule App.
      * 
-     * @parameter alias="appName" expression="${appName}"
-     *            default-value="${project.build.finalName}"
+     * @parameter 
+     * alias="appName" 
+     * property="finalName"
+     * default-value="${project.build.finalName}"
      * @required
      */
     protected String finalName;
@@ -44,15 +47,17 @@ public class Deploy extends AbstractMojo {
      * The name that the application will be deployed as. Default is
      * "MuleApplication"
      * 
-     * @parameter expression="${name}"
+     * @parameter 
+     * property="name"
      */
     protected String name;
 
     /**
      * The name that the application will be deployed as. Default is
-     * same as ${name}
+     * same as {@link Deploy#name}
      *
-     * @parameter expression="${deploymentName}"
+     * @parameter 
+     * property="deploymentName"
      */
     protected String deploymentName;
 
@@ -60,20 +65,23 @@ public class Deploy extends AbstractMojo {
      * The version that the application will be deployed as. Default is the
      * current time in milliseconds.
      * 
-     * @parameter expression="${version}"
+     * @parameter 
+     * property="version"
      */
     protected String version;
 
     /**
      * The username that has
      * 
-     * @parameter expression="${username}"
+     * @parameter
+     * property="username"
      * @required
      */
     protected String username;
 
     /**
-     * @parameter expression="${password}"
+     * @parameter
+     * property="password" 
      * @required
      */
     protected String password;
@@ -81,19 +89,25 @@ public class Deploy extends AbstractMojo {
     /**
      * Directory containing the app resources.
      * 
-     * @parameter expression="${basedir}/src/main/app"
+     * @parameter 
+     * property="appDirectory"
+     * default-value="${basedir}/src/main/app"
      * @required
      */
     protected File appDirectory;
 
     /**
-     * @parameter expression="muleApiUrl"
+     * MMC (Mule Management Console) URL
+     * 
+     * @parameter 
+     * property="muleApiUrl"
      * @required
      */
     protected URL muleApiUrl;
 
     /**
-     * @parameter expression="${serverGroup}"
+     * @parameter 
+     * property="serverGroup"
      * @required
      */
     protected String serverGroup;
