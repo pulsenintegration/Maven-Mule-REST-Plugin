@@ -22,6 +22,7 @@ import org.slf4j.impl.StaticLoggerBinder;
  * @author Mohamed EL HABIB
  */
 public class Deploy extends AbstractMojo {
+
 	public static final String DEFAULT_NAME = "MuleApplication";
 
 	/**
@@ -101,7 +102,7 @@ public class Deploy extends AbstractMojo {
 	 */
 	protected String serverGroup;
 
-	protected MuleRest muleRest;
+	private MuleRest _muleRest;
 
 	@Override
 	public void execute() throws MojoExecutionException, MojoFailureException {
@@ -134,10 +135,10 @@ public class Deploy extends AbstractMojo {
 		}
 		try {
 			validateProject(appDirectory);
-			muleRest = buildMuleRest();
-			String versionId = muleRest.restfullyUploadRepository(name, version, getMuleZipFile(outputDirectory, finalName));
-			String deploymentId = muleRest.restfullyCreateDeployment(serverGroup, deploymentName, versionId);
-			muleRest.restfullyDeployDeploymentById(deploymentId);
+			_muleRest = buildMuleRest();
+			String versionId = _muleRest.restfullyUploadRepository(name, version, getMuleZipFile(outputDirectory, finalName));
+			String deploymentId = _muleRest.restfullyCreateDeployment(serverGroup, deploymentName, versionId);
+			_muleRest.restfullyDeployDeploymentById(deploymentId);
 		} catch (Exception e) {
 			throw new MojoFailureException("Error in attempting to deploy archive: " + e.toString(), e);
 		}
