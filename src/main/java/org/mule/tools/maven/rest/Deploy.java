@@ -28,7 +28,8 @@ public class Deploy extends AbstractMojo {
 	/**
 	 * Directory containing the generated Mule App.
 	 * 
-	 * @parameter property="project.build.directory"
+	 * @parameter property="outputDirectory"
+	 *            default-value="${project.build.directory}"
 	 * @required
 	 */
 	protected File outputDirectory;
@@ -57,7 +58,7 @@ public class Deploy extends AbstractMojo {
 	 * The name of the application in the repository. Default is
 	 * "MuleApplication"
 	 * 
-	 * @parameter property="name"
+	 * @parameter property="name" default-value="${name}"
 	 */
 	protected String name;
 
@@ -65,7 +66,7 @@ public class Deploy extends AbstractMojo {
 	 * The name that the application will be deployed as. Default is same as
 	 * {@link Deploy#name}
 	 * 
-	 * @parameter property="deploymentName"
+	 * @parameter property="deploymentName" default-value="${deploymentName}"
 	 */
 	protected String deploymentName;
 
@@ -73,14 +74,14 @@ public class Deploy extends AbstractMojo {
 	 * The version that the application will be deployed as. Default is the
 	 * current time in milliseconds.
 	 * 
-	 * @parameter property="version"
+	 * @parameter property="version" default-value="${version}"
 	 */
 	protected String version;
 
 	/**
 	 * MMC login username
 	 * 
-	 * @parameter property="username"
+	 * @parameter property="username" default-value="${username}"
 	 * @required
 	 */
 	protected String username;
@@ -88,7 +89,7 @@ public class Deploy extends AbstractMojo {
 	/**
 	 * MMC login password
 	 * 
-	 * @parameter property="password"
+	 * @parameter property="password" default-value="${password}"
 	 * @required
 	 */
 	protected String password;
@@ -96,7 +97,7 @@ public class Deploy extends AbstractMojo {
 	/**
 	 * MMC (Mule Management Console) URL
 	 * 
-	 * @parameter property="muleApiUrl"
+	 * @parameter property="muleApiUrl" default-value="${muleApiUrl}"
 	 * @required
 	 */
 	protected URL muleApiUrl;
@@ -104,7 +105,7 @@ public class Deploy extends AbstractMojo {
 	/**
 	 * Name of the server or server group where to deploy the Mule application
 	 * 
-	 * @parameter property="serverOrGroup"
+	 * @parameter property="serverOrGroup" default-value="${serverOrGroup}"
 	 * @required
 	 */
 	protected String serverOrGroup;
