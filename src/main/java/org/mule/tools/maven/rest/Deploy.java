@@ -43,16 +43,18 @@ public class Deploy extends AbstractMojo {
 	protected File appDirectory;
 
 	/**
-	 * Name of the generated Mule App.
+	 * Name of the generated Mule App. (This field is initialized with internal
+	 * Maven variable ${project.build.finalName} which is corresponding to the
+	 * Mule application artifact name)
 	 * 
-	 * @parameter alias="appName" property="finalName"
+	 * @parameter property="muleAppFileName"
 	 *            default-value="${project.build.finalName}"
 	 * @required
 	 */
-	protected String finalName;
+	protected String muleAppFileName;
 
 	/**
-	 * The name that the application will be deployed as. Default is
+	 * The name of the application in the repository. Default is
 	 * "MuleApplication"
 	 * 
 	 * @parameter property="name"
@@ -85,6 +87,7 @@ public class Deploy extends AbstractMojo {
 
 	/**
 	 * MMC login password
+	 * 
 	 * @parameter property="password"
 	 * @required
 	 */
@@ -100,6 +103,7 @@ public class Deploy extends AbstractMojo {
 
 	/**
 	 * Name of the server or server group where to deploy the Mule application
+	 * 
 	 * @parameter property="serverOrGroup"
 	 * @required
 	 */
@@ -132,8 +136,8 @@ public class Deploy extends AbstractMojo {
 		if (outputDirectory == null) {
 			throw new MojoFailureException("outputDirectory not set.");
 		}
-		if (finalName == null) {
-			throw new MojoFailureException("finalName not set.");
+		if (muleAppFileName == null) {
+			throw new MojoFailureException("muleAppFileName not set.");
 		}
 		if (serverOrGroup == null) {
 			throw new MojoFailureException("serverOrGroup not set.");
@@ -141,7 +145,7 @@ public class Deploy extends AbstractMojo {
 		try {
 			validateProject(appDirectory);
 			_muleRest = buildMuleRest();
-			String versionId = _muleRest.restfullyUploadRepository(name, version, getMuleZipFile(outputDirectory, finalName));
+			String versionId = _muleRest.restfullyUploadRepository(name, version, getMuleZipFile(outputDirectory, muleAppFileName));
 			String deploymentId = _muleRest.restfullyCreateDeployment(serverOrGroup, deploymentName, versionId);
 			_muleRest.restfullyDeployDeploymentById(deploymentId);
 		} catch (Exception e) {
@@ -153,7 +157,7 @@ public class Deploy extends AbstractMojo {
 		logger.debug(this.getClass().getName() + " fields :");
 		logger.debug("deploymentName=" + (this.deploymentName == null ? "null" : "\"" + this.deploymentName + "\""));
 		logger.debug("name=" + (this.name == null ? "null" : "\"" + this.name + "\""));
-		logger.debug("finalName=" + (this.finalName == null ? "null" : "\"" + this.finalName + "\""));
+		logger.debug("muleAppFileName=" + (this.muleAppFileName == null ? "null" : "\"" + this.muleAppFileName + "\""));
 		logger.debug("muleApiUrl=" + (this.muleApiUrl == null ? "null" : "\"" + this.muleApiUrl + "\""));
 		logger.debug("username=" + (this.username == null ? "null" : "\"" + this.username + "\""));
 		logger.debug("password=" + (this.password == null ? "null" : "\"" + this.password + "\""));
