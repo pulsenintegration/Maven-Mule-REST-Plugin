@@ -33,7 +33,6 @@ public class DeployTest {
 		Log log = new SystemStreamLog();
 
 		deploy.setLog(log);
-		deploy.appDirectory = File.createTempFile("123", null);
 		deploy.outputDirectory = File.createTempFile("456", null);
 
 		deploy.muleAppFileName = "";
@@ -46,7 +45,6 @@ public class DeployTest {
 	}
 
 	private void setupMocks() throws Exception {
-		doNothing().when(deploy).validateProject(any(File.class));
 		doReturn(null).when(deploy).getMuleZipFile(any(File.class), anyString());
 		mockMuleRest = mock(MuleRest.class);
 		when(deploy.buildMuleRest()).thenReturn(mockMuleRest);

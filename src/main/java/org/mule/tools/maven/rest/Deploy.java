@@ -35,15 +35,6 @@ public class Deploy extends AbstractMojo {
 	protected File outputDirectory;
 
 	/**
-	 * Directory containing the app resources.
-	 * 
-	 * @parameter property="appDirectory"
-	 *            default-value="${basedir}/src/main/app"
-	 * @required
-	 */
-	protected File appDirectory;
-
-	/**
 	 * Name of the generated Mule App. (This field is initialized with internal
 	 * Maven variable ${project.build.finalName} which is corresponding to the
 	 * Mule application artifact name)
@@ -144,7 +135,6 @@ public class Deploy extends AbstractMojo {
 			throw new MojoFailureException("serverOrGroup not set.");
 		}
 		try {
-			validateProject(appDirectory);
 			_muleRest = buildMuleRest();
 			String versionId = _muleRest.restfullyUploadRepository(name, version, getMuleZipFile(outputDirectory, muleAppFileName));
 			String deploymentId = _muleRest.restfullyCreateDeployment(serverOrGroup, deploymentName, versionId);
@@ -164,7 +154,6 @@ public class Deploy extends AbstractMojo {
 		logger.debug("password=" + (this.password == null ? "null" : "\"" + this.password + "\""));
 		logger.debug("serverOrGroup=" + (this.serverOrGroup == null ? "null" : "\"" + this.serverOrGroup + "\""));
 		logger.debug("version=" + (this.version == null ? "null" : "\"" + this.version + "\""));
-		logger.debug("appDirectory=" + (this.appDirectory == null ? "null" : "\"" + this.appDirectory + "\""));
 		logger.debug("outputDirectory=" + (this.outputDirectory == null ? "null" : "\"" + this.outputDirectory + "\""));
 	}
 
@@ -174,15 +163,6 @@ public class Deploy extends AbstractMojo {
 			throw new MojoFailureException("There no application ZIP file generated : check that you have configured the maven-mule-plugin to generated the this file");
 		}
 		return file;
-	}
-
-	protected void validateProject(File appDirectory) throws MojoExecutionException {
-		File muleConfig = new File(appDirectory, "mule-config.xml");
-		File deploymentDescriptor = new File(appDirectory, "mule-deploy.properties");
-
-		if ((muleConfig.exists() == false) && (deploymentDescriptor.exists() == false)) {
-			throw new MojoExecutionException("No mule-config.xml or mule-deploy.properties");
-		}
 	}
 
 	protected MuleRest buildMuleRest() {
