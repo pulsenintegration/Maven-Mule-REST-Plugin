@@ -32,6 +32,16 @@ public class Deploy extends AbstractMojo {
 	 * @required
 	 */
 	protected File outputDirectory;
+
+	/**
+	 * Directory containing the app resources.
+	 * 
+	 * @parameter property="appDirectory"
+	 *            default-value="${basedir}/src/main/app"
+	 * @required
+	 */
+	protected File appDirectory;
+
 	/**
 	 * Name of the generated Mule App.
 	 * 
@@ -66,7 +76,7 @@ public class Deploy extends AbstractMojo {
 	protected String version;
 
 	/**
-	 * The username that has
+	 * MMC login username
 	 * 
 	 * @parameter property="username"
 	 * @required
@@ -74,19 +84,11 @@ public class Deploy extends AbstractMojo {
 	protected String username;
 
 	/**
+	 * MMC login password
 	 * @parameter property="password"
 	 * @required
 	 */
 	protected String password;
-
-	/**
-	 * Directory containing the app resources.
-	 * 
-	 * @parameter property="appDirectory"
-	 *            default-value="${basedir}/src/main/app"
-	 * @required
-	 */
-	protected File appDirectory;
 
 	/**
 	 * MMC (Mule Management Console) URL
@@ -97,10 +99,11 @@ public class Deploy extends AbstractMojo {
 	protected URL muleApiUrl;
 
 	/**
-	 * @parameter property="serverGroup"
+	 * Name of the server or server group where to deploy the Mule application
+	 * @parameter property="serverOrGroup"
 	 * @required
 	 */
-	protected String serverGroup;
+	protected String serverOrGroup;
 
 	private MuleRest _muleRest;
 
@@ -108,6 +111,8 @@ public class Deploy extends AbstractMojo {
 	public void execute() throws MojoExecutionException, MojoFailureException {
 		StaticLoggerBinder.getSingleton().setLog(getLog());
 		Logger logger = LoggerFactory.getLogger(getClass());
+
+		_logDebug(logger);
 
 		if (name == null) {
 			logger.info("Name is not set, using default \"{}\"", DEFAULT_NAME);
@@ -130,18 +135,32 @@ public class Deploy extends AbstractMojo {
 		if (finalName == null) {
 			throw new MojoFailureException("finalName not set.");
 		}
-		if (serverGroup == null) {
-			throw new MojoFailureException("serverGroup not set.");
+		if (serverOrGroup == null) {
+			throw new MojoFailureException("serverOrGroup not set.");
 		}
 		try {
 			validateProject(appDirectory);
 			_muleRest = buildMuleRest();
 			String versionId = _muleRest.restfullyUploadRepository(name, version, getMuleZipFile(outputDirectory, finalName));
-			String deploymentId = _muleRest.restfullyCreateDeployment(serverGroup, deploymentName, versionId);
+			String deploymentId = _muleRest.restfullyCreateDeployment(serverOrGroup, deploymentName, versionId);
 			_muleRest.restfullyDeployDeploymentById(deploymentId);
 		} catch (Exception e) {
 			throw new MojoFailureException("Error in attempting to deploy archive: " + e.toString(), e);
 		}
+	}
+
+	private void _logDebug(Logger logger) {
+		logger.debug(this.getClass().getName() + " fields :");
+		logger.debug("deploymentName=" + (this.deploymentName == null ? "null" : "\"" + this.deploymentName + "\""));
+		logger.debug("name=" + (this.name == null ? "null" : "\"" + this.name + "\""));
+		logger.debug("finalName=" + (this.finalName == null ? "null" : "\"" + this.finalName + "\""));
+		logger.debug("muleApiUrl=" + (this.muleApiUrl == null ? "null" : "\"" + this.muleApiUrl + "\""));
+		logger.debug("username=" + (this.username == null ? "null" : "\"" + this.username + "\""));
+		logger.debug("password=" + (this.password == null ? "null" : "\"" + this.password + "\""));
+		logger.debug("serverOrGroup=" + (this.serverOrGroup == null ? "null" : "\"" + this.serverOrGroup + "\""));
+		logger.debug("version=" + (this.version == null ? "null" : "\"" + this.version + "\""));
+		logger.debug("appDirectory=" + (this.appDirectory == null ? "null" : "\"" + this.appDirectory + "\""));
+		logger.debug("outputDirectory=" + (this.outputDirectory == null ? "null" : "\"" + this.outputDirectory + "\""));
 	}
 
 	protected File getMuleZipFile(File outputDirectory, String filename) throws MojoFailureException {

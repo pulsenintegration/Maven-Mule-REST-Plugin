@@ -14,6 +14,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import org.apache.cxf.common.util.StringUtils;
 import org.apache.cxf.helpers.IOUtils;
 import org.apache.cxf.jaxrs.client.WebClient;
 import org.apache.cxf.jaxrs.ext.multipart.Attachment;
@@ -73,10 +74,14 @@ public class MuleRest {
 		}
 	}
 
-	public String restfullyCreateDeployment(String serverGroup, String name, String versionId) throws IOException {
-		Set<String> serversIds = restfullyGetServers(serverGroup);
-		if (serversIds.isEmpty()) {
-			throw new IllegalArgumentException("No server found into group : " + serverGroup);
+	public String restfullyCreateDeployment(String serverOrGroup, String name, String versionId) throws IOException {
+		String serverOrGroupId = restfullyGetServerGroupId(serverOrGroup);
+		if (StringUtils.isEmpty(serverOrGroupId)) {
+			serverOrGroupId = restfullyGetServerId(serverOrGroup);
+		}
+
+		if (StringUtils.isEmpty(serverOrGroupId)) {
+			throw new IllegalArgumentException("No group or server named \"" + serverOrGroup + "\" found");
 		}
 
 		// delete existing deployment before creating new one
@@ -93,9 +98,7 @@ public class MuleRest {
 			jGenerator.writeStringField("name", name); // "name" : name
 			jGenerator.writeFieldName("servers"); // "servers" :
 			jGenerator.writeStartArray(); // [
-			for (String serverId : serversIds) {
-				jGenerator.writeString(serverId); // "serverId"
-			}
+			jGenerator.writeString(serverOrGroupId); // "serverId"
 			jGenerator.writeEndArray(); // ]
 			jGenerator.writeFieldName("applications"); // "applications" :
 			jGenerator.writeStartArray(); // [
@@ -108,7 +111,7 @@ public class MuleRest {
 			InputStream responseStream = (InputStream) response.getEntity();
 			JsonNode jsonNode = OBJECT_MAPPER.readTree(responseStream);
 
-			return jsonNode.path("id").asText();
+			return jsonNode.path("id").getTextValue();
 		} finally {
 			webClient.close();
 		}
@@ -154,8 +157,8 @@ public class MuleRest {
 			JsonNode jsonNode = OBJECT_MAPPER.readTree(responseStream);
 			JsonNode deploymentsNode = jsonNode.path("data");
 			for (JsonNode deploymentNode : deploymentsNode) {
-				if (name.equals(deploymentNode.path("name").asText())) {
-					deploymentId = deploymentNode.path("id").asText();
+				if (name.equals(deploymentNode.path("name").getTextValue())) {
+					deploymentId = deploymentNode.path("id").getTextValue();
 					break;
 				}
 			}
@@ -176,11 +179,11 @@ public class MuleRest {
 			JsonNode jsonNode = OBJECT_MAPPER.readTree(responseStream);
 			JsonNode applicationsNode = jsonNode.path("data");
 			for (JsonNode applicationNode : applicationsNode) {
-				if (name.equals(applicationNode.path("name").asText())) {
+				if (name.equals(applicationNode.path("name").getTextValue())) {
 					JsonNode versionsNode = applicationNode.path("versions");
 					for (JsonNode versionNode : versionsNode) {
-						if (version.equals(versionNode.path("name").asText())) {
-							applicationId = versionNode.get("id").asText();
+						if (version.equals(versionNode.path("name").getTextValue())) {
+							applicationId = versionNode.get("id").getTextValue();
 							break;
 						}
 					}
@@ -192,32 +195,41 @@ public class MuleRest {
 		return applicationId;
 	}
 
-	public final String restfullyGetServerGroupId(String serverGroup) throws IOException {
+	/**
+	 * Returns id of given group name or null if not found
+	 * 
+	 * @param serverGroupName
+	 * @return
+	 * @throws IOException
+	 */
+	public final String restfullyGetServerGroupId(String serverGroupName) throws IOException {
 		String serverGroupId = null;
-
 		WebClient webClient = getWebClient("serverGroups");
 		try {
 			Response response = webClient.get();
-
 			InputStream responseStream = (InputStream) response.getEntity();
 			JsonNode jsonNode = OBJECT_MAPPER.readTree(responseStream);
 			JsonNode groupsNode = jsonNode.path("data");
 			for (JsonNode groupNode : groupsNode) {
-				if (serverGroup.equals(groupNode.path("name").asText())) {
-					serverGroupId = groupNode.path("id").asText();
+				if (serverGroupName.equals(groupNode.path("name").getTextValue())) {
+					serverGroupId = groupNode.path("id").getTextValue();
 					break;
 				}
 			}
-			if (serverGroupId == null) {
-				throw new IllegalArgumentException("no server group found having the name " + serverGroup);
-			}
+			return serverGroupId;
 		} finally {
 			webClient.close();
 		}
-		return serverGroupId;
 	}
 
-	public Set<String> restfullyGetServers(String serverGroup) throws IOException {
+	/**
+	 * Returns ids of all servers in given group name
+	 * 
+	 * @param serverGroupName
+	 * @return
+	 * @throws IOException
+	 */
+	public Set<String> restfullyGetServerIdsInGroup(String serverGroupName) throws IOException {
 		Set<String> serversId = new TreeSet<String>();
 		WebClient webClient = getWebClient("servers");
 
@@ -228,11 +240,11 @@ public class MuleRest {
 			JsonNode jsonNode = OBJECT_MAPPER.readTree(responseStream);
 			JsonNode serversNode = jsonNode.path("data");
 			for (JsonNode serverNode : serversNode) {
-				String serverId = serverNode.path("id").asText();
+				String serverId = serverNode.path("id").getTextValue();
 
 				JsonNode groupsNode = serverNode.path("groups");
 				for (JsonNode groupNode : groupsNode) {
-					if (serverGroup.equals(groupNode.path("name").asText())) {
+					if (serverGroupName.equals(groupNode.path("name").getTextValue())) {
 						serversId.add(serverId);
 					}
 				}
@@ -241,6 +253,35 @@ public class MuleRest {
 			webClient.close();
 		}
 		return serversId;
+	}
+
+	/**
+	 * Returns id of given server name or null if not found
+	 * 
+	 * @param serverName
+	 * @return
+	 * @throws IOException
+	 */
+	public String restfullyGetServerId(String serverName) throws IOException {
+		String serverId = null;
+		WebClient webClient = getWebClient("servers");
+
+		try {
+			Response response = webClient.get();
+			InputStream responseStream = (InputStream) response.getEntity();
+			JsonNode jsonNode = OBJECT_MAPPER.readTree(responseStream);
+			JsonNode serversNode = jsonNode.path("data");
+			for (JsonNode serverNode : serversNode) {
+				if (serverName.equals(serverNode.path("name").getTextValue())) {
+					serverId = serverNode.path("id").getTextValue();
+					break;
+				}
+			}
+
+			return serverId;
+		} finally {
+			webClient.close();
+		}
 	}
 
 	public String restfullyUploadRepository(String name, String version, File packageFile) throws IOException {
@@ -264,7 +305,7 @@ public class MuleRest {
 
 			ObjectMapper mapper = new ObjectMapper();
 			JsonNode result = mapper.readTree(responseObject);
-			return result.path("versionId").asText();
+			return result.path("versionId").getTextValue();
 		} finally {
 			webClient.close();
 		}

@@ -15,7 +15,7 @@ Example:
 				<plugin>
 					<groupId>org.mule.tools</groupId>
 					<artifactId>mule-mmc-rest-plugin</artifactId>
-					<version>1.2.3-SNAPSHOT</version>
+					<version>1.2.4-SNAPSHOT</version>
 				</plugin>
 			</plugins>
 		</build>
@@ -32,8 +32,8 @@ This goal will
 *   delete an existing mule application archive from the MMC Repository if version contains "SNAPSHOT"
 *	upload the mule application archive to the MMC Repository
 *	delete an existing deployment having the same application name
-*	create a new deployment this the uploaded archive, with target the given serverGroup
-*	perform a deploy request to make MMC deploy into target server group
+*	upload application to the MMC repository
+*	perform a deploy request to make MMC deploy into target server or server group
 
 ## Security ##
 In order to post to the Mule Repository, you need only these permissions:
@@ -53,7 +53,7 @@ In order to post to the Mule Repository, you need only these permissions:
 	<td>
 		The URL of the Mule MMC API (usually .../api)
 	<td>
-		http://localhost:8585/mmc/api
+		
 <tr>
 	<td>
 		name
@@ -77,9 +77,9 @@ In order to post to the Mule Repository, you need only these permissions:
 		Current Time, in MM-dd-yyyy HH:mm:ss format
 <tr>
 	<td>
-		serverGroup
+		serverOrGroup
 	<td>
-		The name of the target Mule serverGroup
+		The name of the target Mule server or server group
 	<td>
 <tr>
 	<td>

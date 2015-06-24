@@ -40,7 +40,7 @@ public class DeployTest {
 		deploy.muleApiUrl = new URL("http", "localhost", 8080, "");
 		deploy.username = USER_NAME;
 		deploy.password = PASSWORD;
-		deploy.serverGroup = SERVER_GROUP;
+		deploy.serverOrGroup = SERVER_GROUP;
 		deploy.name = NAME;
 		deploy.version = VERSION;
 	}
@@ -84,7 +84,7 @@ public class DeployTest {
 
 	@Test(expected = MojoFailureException.class)
 	public void testServerGroupNull() throws MojoExecutionException, MojoFailureException {
-		deploy.serverGroup = null;
+		deploy.serverOrGroup = null;
 		deploy.execute();
 		Assert.fail("Exception should have been thrown before this is called");
 	}

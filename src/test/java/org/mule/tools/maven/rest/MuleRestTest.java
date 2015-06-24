@@ -186,7 +186,7 @@ public class MuleRestTest {
 		return json;
 	}
 
-	private String generateServersJson(String serverGroupToFind, String serverId) throws IOException {
+	private String generateServersJson(String serverName, String serverGroupToFind, String serverId) throws IOException {
 		StringWriter stringWriter = new StringWriter();
 		JsonFactory jsonFactory = new JsonFactory();
 		JsonGenerator jsonGenerator = jsonFactory.createGenerator(stringWriter);
@@ -197,6 +197,7 @@ public class MuleRestTest {
 
 		jsonGenerator.writeStartArray();
 		jsonGenerator.writeStartObject();
+		jsonGenerator.writeStringField("name", serverName);
 		jsonGenerator.writeStringField("id", serverId);
 		jsonGenerator.writeFieldName("groups");
 		jsonGenerator.writeStartArray();
@@ -241,27 +242,58 @@ public class MuleRestTest {
 		stubFor(delete(urlEqualTo("/deployments/" + deploymentId)).willReturn(aResponse().withStatus(200).withHeader("Authorization", "Basic YWRtaW46YWRtaW4=")));
 	}
 
-	private void stubGetServers(String serverGroupToFind, String serverId) throws IOException {
-		stubFor(get(urlEqualTo("/servers")).willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withHeader("Authorization", "Basic YWRtaW46YWRtaW4=").withBody(generateServersJson(serverGroupToFind, serverId))));
+	private void stubGetServers(String serverName, String serverGroupToFind, String serverId) throws IOException {
+		stubFor(get(urlEqualTo("/servers")).willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withHeader("Authorization", "Basic YWRtaW46YWRtaW4=").withBody(generateServersJson(serverName, serverGroupToFind, serverId))));
 	}
 
 	private void stubGetDeploymentIdByName(String name, String id) throws IOException {
 		stubFor(get(urlEqualTo("/deployments")).willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withHeader("Authorization", "Basic YWRtaW46YWRtaW4=").withBody(generateDeploymentIdJson(name, id))));
 	}
 
+	private void stubGetServerGroups(String name, String id) throws IOException {
+		stubFor(get(urlEqualTo("/serverGroups")).willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withHeader("Authorization", "Basic YWRtaW46YWRtaW4=").withBody(generateServerGroupIdJson(name, id))));
+	}
+
 	@Test
-	public void testRestfullyCreateDeployment() throws IOException {
-		String serverGroup = UUID.randomUUID().toString();
+	public void testRestfullyCreateDeploymentFromServerGroupName() throws IOException {
+		String serverGroupName = UUID.randomUUID().toString();
+		String serverId = UUID.randomUUID().toString();
+
 		String name = UUID.randomUUID().toString();
 		String versionId = UUID.randomUUID().toString();
-		String serverId = UUID.randomUUID().toString();
 		String deploymentId = UUID.randomUUID().toString();
 
-		stubGetServers(serverGroup, serverId);
+		stubGetServerGroups(serverGroupName, serverId);
 		stubCreateDeployment(deploymentId);
 		stubGetDeploymentIdByName(name, deploymentId);
 		stubDeleteDeploymentById(deploymentId);
-		muleRest.restfullyCreateDeployment(serverGroup, name, versionId);
+
+		muleRest.restfullyCreateDeployment(serverGroupName, name, versionId);
+
+		verifyDeleteDeploymentById(deploymentId);
+		verifyGetDeploymentIdByName();
+		verifyGetServerGroups();
+		verifyCreateDeployment(serverId, name, versionId);
+	}
+
+	@Test
+	public void testRestfullyCreateDeploymentFromServerName() throws IOException {
+		String serverName = UUID.randomUUID().toString();
+		String serverId = UUID.randomUUID().toString();
+
+		String name = UUID.randomUUID().toString();
+		String versionId = UUID.randomUUID().toString();
+		String deploymentId = UUID.randomUUID().toString();
+
+		stubGetServers(serverName, "DummyGroup", serverId);
+		stubGetServerGroups(serverName, null);
+
+		stubCreateDeployment(deploymentId);
+		stubGetDeploymentIdByName(name, deploymentId);
+		stubDeleteDeploymentById(deploymentId);
+
+		muleRest.restfullyCreateDeployment(serverName, name, versionId);
+
 		verifyDeleteDeploymentById(deploymentId);
 		verifyGetDeploymentIdByName();
 		verifyGetServers();
@@ -328,8 +360,8 @@ public class MuleRestTest {
 		String serverGroupToFind = UUID.randomUUID().toString();
 		String serverId = UUID.randomUUID().toString();
 
-		stubGetServers(serverGroupToFind, serverId);
-		Set<String> servers = muleRest.restfullyGetServers(serverGroupToFind);
+		stubGetServers("DummyServerName", serverGroupToFind, serverId);
+		Set<String> servers = muleRest.restfullyGetServerIdsInGroup(serverGroupToFind);
 		Assert.assertTrue("Server Id doesn't match", servers.contains(serverId));
 		verifyGetServers();
 	}
@@ -427,5 +459,9 @@ public class MuleRestTest {
 
 	private void verifyGetServers() {
 		verify(getRequestedFor(urlMatching("/servers")).withHeader("Authorization", equalTo("Basic YWRtaW46YWRtaW4=")));
+	}
+
+	private void verifyGetServerGroups() {
+		verify(getRequestedFor(urlMatching("/serverGroups")).withHeader("Authorization", equalTo("Basic YWRtaW46YWRtaW4=")));
 	}
 }
