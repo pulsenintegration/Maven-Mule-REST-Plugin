@@ -32,7 +32,7 @@ public class Deploy extends AbstractMojo {
 	 * @required
 	 */
 	protected File outputDirectory;
-	
+
 	/**
 	 * Directory containing the app resources.
 	 * 
@@ -40,8 +40,8 @@ public class Deploy extends AbstractMojo {
 	 *            default-value="${basedir}/src/main/app"
 	 * @required
 	 */
-	protected File appDirectory;	
-	
+	protected File appDirectory;
+
 	/**
 	 * Name of the generated Mule App.
 	 * 
@@ -76,7 +76,7 @@ public class Deploy extends AbstractMojo {
 	protected String version;
 
 	/**
-	 * The username that has
+	 * MMC login username
 	 * 
 	 * @parameter property="username"
 	 * @required
@@ -84,6 +84,7 @@ public class Deploy extends AbstractMojo {
 	protected String username;
 
 	/**
+	 * MMC login password
 	 * @parameter property="password"
 	 * @required
 	 */
@@ -98,6 +99,7 @@ public class Deploy extends AbstractMojo {
 	protected URL muleApiUrl;
 
 	/**
+	 * Name of the server or server group where to deploy the Mule application
 	 * @parameter property="serverOrGroup"
 	 * @required
 	 */
@@ -109,6 +111,8 @@ public class Deploy extends AbstractMojo {
 	public void execute() throws MojoExecutionException, MojoFailureException {
 		StaticLoggerBinder.getSingleton().setLog(getLog());
 		Logger logger = LoggerFactory.getLogger(getClass());
+
+		_logDebug(logger);
 
 		if (name == null) {
 			logger.info("Name is not set, using default \"{}\"", DEFAULT_NAME);
@@ -143,6 +147,20 @@ public class Deploy extends AbstractMojo {
 		} catch (Exception e) {
 			throw new MojoFailureException("Error in attempting to deploy archive: " + e.toString(), e);
 		}
+	}
+
+	private void _logDebug(Logger logger) {
+		logger.debug(this.getClass().getName() + " fields :");
+		logger.debug("deploymentName=" + (this.deploymentName == null ? "null" : "\"" + this.deploymentName + "\""));
+		logger.debug("name=" + (this.name == null ? "null" : "\"" + this.name + "\""));
+		logger.debug("finalName=" + (this.finalName == null ? "null" : "\"" + this.finalName + "\""));
+		logger.debug("muleApiUrl=" + (this.muleApiUrl == null ? "null" : "\"" + this.muleApiUrl + "\""));
+		logger.debug("username=" + (this.username == null ? "null" : "\"" + this.username + "\""));
+		logger.debug("password=" + (this.password == null ? "null" : "\"" + this.password + "\""));
+		logger.debug("serverOrGroup=" + (this.serverOrGroup == null ? "null" : "\"" + this.serverOrGroup + "\""));
+		logger.debug("version=" + (this.version == null ? "null" : "\"" + this.version + "\""));
+		logger.debug("appDirectory=" + (this.appDirectory == null ? "null" : "\"" + this.appDirectory + "\""));
+		logger.debug("outputDirectory=" + (this.outputDirectory == null ? "null" : "\"" + this.outputDirectory + "\""));
 	}
 
 	protected File getMuleZipFile(File outputDirectory, String filename) throws MojoFailureException {
