@@ -15,7 +15,7 @@ Example:
 				<plugin>
 					<groupId>org.mule.tools</groupId>
 					<artifactId>mule-mmc-rest-plugin</artifactId>
-					<version>1.2.4-SNAPSHOT</version>
+					<version>1.2.5-SNAPSHOT</version>
 				</plugin>
 			</plugins>
 		</build>

@@ -36,7 +36,7 @@ public class DeployTest {
 		deploy.appDirectory = File.createTempFile("123", null);
 		deploy.outputDirectory = File.createTempFile("456", null);
 
-		deploy.finalName = "";
+		deploy.muleAppFileName = "";
 		deploy.muleApiUrl = new URL("http", "localhost", 8080, "");
 		deploy.username = USER_NAME;
 		deploy.password = PASSWORD;
@@ -77,7 +77,7 @@ public class DeployTest {
 
 	@Test(expected = MojoFailureException.class)
 	public void testFinalNameNull() throws MojoExecutionException, MojoFailureException {
-		deploy.finalName = null;
+		deploy.muleAppFileName = null;
 		deploy.execute();
 		Assert.fail("Exception should have been thrown before this is called");
 	}

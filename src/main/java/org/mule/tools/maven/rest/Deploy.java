@@ -28,7 +28,8 @@ public class Deploy extends AbstractMojo {
 	/**
 	 * Directory containing the generated Mule App.
 	 * 
-	 * @parameter property="project.build.directory"
+	 * @parameter property="outputDirectory"
+	 *            default-value="${project.build.directory}"
 	 * @required
 	 */
 	protected File outputDirectory;
@@ -43,19 +44,21 @@ public class Deploy extends AbstractMojo {
 	protected File appDirectory;
 
 	/**
-	 * Name of the generated Mule App.
+	 * Name of the generated Mule App. (This field is initialized with internal
+	 * Maven variable ${project.build.finalName} which is corresponding to the
+	 * Mule application artifact name)
 	 * 
-	 * @parameter alias="appName" property="finalName"
+	 * @parameter property="muleAppFileName"
 	 *            default-value="${project.build.finalName}"
 	 * @required
 	 */
-	protected String finalName;
+	protected String muleAppFileName;
 
 	/**
-	 * The name that the application will be deployed as. Default is
+	 * The name of the application in the repository. Default is
 	 * "MuleApplication"
 	 * 
-	 * @parameter property="name"
+	 * @parameter property="name" default-value="${name}"
 	 */
 	protected String name;
 
@@ -63,7 +66,7 @@ public class Deploy extends AbstractMojo {
 	 * The name that the application will be deployed as. Default is same as
 	 * {@link Deploy#name}
 	 * 
-	 * @parameter property="deploymentName"
+	 * @parameter property="deploymentName" default-value="${deploymentName}"
 	 */
 	protected String deploymentName;
 
@@ -71,21 +74,22 @@ public class Deploy extends AbstractMojo {
 	 * The version that the application will be deployed as. Default is the
 	 * current time in milliseconds.
 	 * 
-	 * @parameter property="version"
+	 * @parameter property="version" default-value="${version}"
 	 */
 	protected String version;
 
 	/**
 	 * MMC login username
 	 * 
-	 * @parameter property="username"
+	 * @parameter property="username" default-value="${username}"
 	 * @required
 	 */
 	protected String username;
 
 	/**
 	 * MMC login password
-	 * @parameter property="password"
+	 * 
+	 * @parameter property="password" default-value="${password}"
 	 * @required
 	 */
 	protected String password;
@@ -93,14 +97,15 @@ public class Deploy extends AbstractMojo {
 	/**
 	 * MMC (Mule Management Console) URL
 	 * 
-	 * @parameter property="muleApiUrl"
+	 * @parameter property="muleApiUrl" default-value="${muleApiUrl}"
 	 * @required
 	 */
 	protected URL muleApiUrl;
 
 	/**
 	 * Name of the server or server group where to deploy the Mule application
-	 * @parameter property="serverOrGroup"
+	 * 
+	 * @parameter property="serverOrGroup" default-value="${serverOrGroup}"
 	 * @required
 	 */
 	protected String serverOrGroup;
@@ -132,8 +137,8 @@ public class Deploy extends AbstractMojo {
 		if (outputDirectory == null) {
 			throw new MojoFailureException("outputDirectory not set.");
 		}
-		if (finalName == null) {
-			throw new MojoFailureException("finalName not set.");
+		if (muleAppFileName == null) {
+			throw new MojoFailureException("muleAppFileName not set.");
 		}
 		if (serverOrGroup == null) {
 			throw new MojoFailureException("serverOrGroup not set.");
@@ -141,7 +146,7 @@ public class Deploy extends AbstractMojo {
 		try {
 			validateProject(appDirectory);
 			_muleRest = buildMuleRest();
-			String versionId = _muleRest.restfullyUploadRepository(name, version, getMuleZipFile(outputDirectory, finalName));
+			String versionId = _muleRest.restfullyUploadRepository(name, version, getMuleZipFile(outputDirectory, muleAppFileName));
 			String deploymentId = _muleRest.restfullyCreateDeployment(serverOrGroup, deploymentName, versionId);
 			_muleRest.restfullyDeployDeploymentById(deploymentId);
 		} catch (Exception e) {
@@ -153,7 +158,7 @@ public class Deploy extends AbstractMojo {
 		logger.debug(this.getClass().getName() + " fields :");
 		logger.debug("deploymentName=" + (this.deploymentName == null ? "null" : "\"" + this.deploymentName + "\""));
 		logger.debug("name=" + (this.name == null ? "null" : "\"" + this.name + "\""));
-		logger.debug("finalName=" + (this.finalName == null ? "null" : "\"" + this.finalName + "\""));
+		logger.debug("muleAppFileName=" + (this.muleAppFileName == null ? "null" : "\"" + this.muleAppFileName + "\""));
 		logger.debug("muleApiUrl=" + (this.muleApiUrl == null ? "null" : "\"" + this.muleApiUrl + "\""));
 		logger.debug("username=" + (this.username == null ? "null" : "\"" + this.username + "\""));
 		logger.debug("password=" + (this.password == null ? "null" : "\"" + this.password + "\""));
