@@ -3,7 +3,7 @@
 
 	<groupId>com.github.nicholasastuart</groupId>
 	<artifactId>mule-mmc-rest-plugin</artifactId>
-	<version>1.2.2-SNAPSHOT</version>
+	<version>1.2.3-SNAPSHOT</version>
 	<packaging>maven-plugin</packaging>
 	<name>Mule MMC REST Plugin</name>
 	<description>Maven plugin for performing RESTful actions to the Mule ESB MMC</description>
@@ -41,6 +41,11 @@
 			<id>melhabib</id>
 			<name>Mohamed EL HABIB</name>
 			<email>melhabib@digitas.fr</email>
+		</developer>
+		<developer>
+			<id>EmilianoElMariachi</id>
+			<name>Emiliano El Mariachi</name>
+			<email>milhouzelatarlouze@msn.com</email>
 		</developer>
 	</developers>
 	
