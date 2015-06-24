@@ -15,7 +15,7 @@ Example:
 				<plugin>
 					<groupId>org.mule.tools</groupId>
 					<artifactId>mule-mmc-rest-plugin</artifactId>
-					<version>1.2.5-SNAPSHOT</version>
+					<version>1.2.6-SNAPSHOT</version>
 				</plugin>
 			</plugins>
 		</build>
@@ -26,7 +26,11 @@ Example:
 
 There is only one goal, deploy. To call the plugin, do the following
 
-	mule-mmc-rest-plugin:deploy
+	mvn mule-mmc-rest-plugin:deploy
+	
+	or 
+	
+	mvn com.github.nicholasastuart:mule-mmc-rest-plugin:[ARTIFACT_VERSION]:deploy -Dopt1=val1 -Dopt2=val2 ...
 	
 This goal will
 *   delete an existing mule application archive from the MMC Repository if version contains "SNAPSHOT"
@@ -49,48 +53,55 @@ In order to post to the Mule Repository, you need only these permissions:
 		<th>Default
 <tr>
 	<td>
-		muleApiUrl
+		mmcApiUrl
 	<td>
-		The URL of the Mule MMC API (usually .../api)
+		The URL of the Mule Management Console API (usually .../api)
 	<td>
 		
 <tr>
 	<td>
-		name
+		repositoryAppName
 	<td>
-		What to name the application when it is uploaded to the repository
+		Name of the application when it is uploaded to the repository
 	<td>
-		MuleApplication
+		Artifact name
 <tr>
 	<td>
 		deploymentName
 	<td>
-		What to name the deployment when it is uploaded to the repository
+		Name of the deployment when it is deployed on the server or group
 	<td>
-		same as <code>name</code>
+		Artifact name
 <tr>
 	<td>
 		version
 	<td>
-		What version to give the software when it is uploaded to the repository
+		The version given to the uploaded application on the repository
 	<td>
-		Current Time, in MM-dd-yyyy HH:mm:ss format
+		Project version (from the pom.xml) unless <code>useTimestampVersion</code> is set to true
+<tr>
+	<td>
+		useTimestampVersion
+	<td>
+		If set to true, the version is a timestamp in "MM-dd-yyyy-HH:mm:ss" format
+	<td>
+		false
 <tr>
 	<td>
 		serverOrGroup
 	<td>
-		The name of the target Mule server or server group
+		The name of the server or server group where to deploy the application
 	<td>
 <tr>
 	<td>
-		password
-	<td>
-		The password to the Mule MMC API.
-	<td>
-<tr>
-	<td>
-		username
+		mmcUsername
 	<td>
 		The username to the Mule MMC API.
+	<td>
+<tr>
+	<td>
+		mmcPassword
+	<td>
+		The password to the Mule MMC API.
 	<td>
 </table> 
