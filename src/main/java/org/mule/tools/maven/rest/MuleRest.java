@@ -74,6 +74,21 @@ public class MuleRest {
 		}
 	}
 
+	/**
+	 * Creates a new deployment without deploying the application referenced by
+	 * the version id. To deploy the application, see method
+	 * {@link #restfullyDeployDeploymentById(String)}
+	 * 
+	 * @param serverOrGroup
+	 *            Name of the server or group where to deploy the application
+	 * @param name
+	 *            Name of the deployment
+	 * @param versionId
+	 *            Version id of an application on the repository
+	 * @return Returns the id of the deployment
+	 * @throws IOException
+	 * @throws Exception
+	 */
 	public String restfullyCreateDeployment(String serverOrGroup, String name, String versionId) throws IOException {
 		String serverOrGroupId = restfullyGetServerGroupId(serverOrGroup);
 		if (StringUtils.isEmpty(serverOrGroupId)) {
@@ -102,7 +117,7 @@ public class MuleRest {
 			jGenerator.writeEndArray(); // ]
 			jGenerator.writeFieldName("applications"); // "applications" :
 			jGenerator.writeStartArray(); // [
-			jGenerator.writeString(versionId); // "applicationId"
+			jGenerator.writeString(versionId); // "application version Id"
 			jGenerator.writeEndArray(); // ]
 			jGenerator.writeEndObject(); // }
 			jGenerator.close();
@@ -111,7 +126,11 @@ public class MuleRest {
 			InputStream responseStream = (InputStream) response.getEntity();
 			JsonNode jsonNode = OBJECT_MAPPER.readTree(responseStream);
 
-			return jsonNode.path("id").getTextValue();
+			String deploymentId = jsonNode.path("id").getTextValue();
+
+			logger.info("Deployment successfully created with id \"" + deploymentId + "\"");
+
+			return deploymentId;
 		} finally {
 			webClient.close();
 		}
@@ -283,6 +302,19 @@ public class MuleRest {
 			webClient.close();
 		}
 	}
+
+	/**
+	 * Updloads application to the repository and returns the version id
+	 * 
+	 * @param name
+	 *            Name of the application on the repository
+	 * @param version
+	 *            version of the application on the repository
+	 * @param packageFile
+	 *            The application file
+	 * @return The id of the uploaded application on the repository
+	 * @throws IOException
+	 */
 
 	public String restfullyUploadRepository(String name, String version, File packageFile) throws IOException {
 		WebClient webClient = getWebClient("repository");
