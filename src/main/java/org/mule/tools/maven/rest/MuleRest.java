@@ -154,18 +154,33 @@ public class MuleRest {
 		}
 	}
 
+	
+	
+	/**
+	 * Deploy the deployment from the deployment id
+	 * @param deploymentId Id of the deployment
+	 * @throws IOException
+	 */
 	public void restfullyDeployDeploymentById(String deploymentId) throws IOException {
 		WebClient webClient = getWebClient("deployments", deploymentId, "deploy");
 
 		try {
 			Response response = webClient.post(null);
 			processResponse(response);
+			String responseText = IOUtils.toString((InputStream) response.getEntity());
+			logger.info("Application deployed with answer \"" + responseText + "\"");
 		} finally {
 			webClient.close();
 		}
 	}
 
-	public String restfullyGetDeploymentIdByName(String name) throws IOException {
+	/**
+	 * Returns the deployment id from the deployment name
+	 * @param deploymentName
+	 * @return
+	 * @throws IOException
+	 */
+	public String restfullyGetDeploymentIdByName(String deploymentName) throws IOException {
 		WebClient webClient = getWebClient("deployments");
 
 		String deploymentId = null;
@@ -176,7 +191,7 @@ public class MuleRest {
 			JsonNode jsonNode = OBJECT_MAPPER.readTree(responseStream);
 			JsonNode deploymentsNode = jsonNode.path("data");
 			for (JsonNode deploymentNode : deploymentsNode) {
-				if (name.equals(deploymentNode.path("name").getTextValue())) {
+				if (deploymentName.equals(deploymentNode.path("name").getTextValue())) {
 					deploymentId = deploymentNode.path("id").getTextValue();
 					break;
 				}
