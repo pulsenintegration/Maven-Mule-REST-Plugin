@@ -22,6 +22,7 @@ import org.slf4j.impl.StaticLoggerBinder;
  * @execute phase="compile"
  * @requiresDirectInvocation true
  * @requiresDependencyResolution runtime
+ * @requiresProject false
  * 
  * @author Nicholas A. Stuart
  * @author Mohamed EL HABIB
