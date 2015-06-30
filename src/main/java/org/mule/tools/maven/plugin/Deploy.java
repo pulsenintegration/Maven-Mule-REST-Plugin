@@ -96,15 +96,6 @@ public class Deploy extends AbstractMojo {
 	protected String customRepositoryAppName;
 
 	/**
-	 * The name that the application will be deployed as. If not specified, the
-	 * name will be the artifactId
-	 * 
-	 * @parameter property="customDeploymentName"
-	 *            default-value="${customDeploymentName}"
-	 */
-	protected String customDeploymentName;
-
-	/**
 	 * The version that the application will have on the repository. If not
 	 * specified, the version will be taken from the pom.xml
 	 * 
@@ -112,6 +103,15 @@ public class Deploy extends AbstractMojo {
 	 *            default-value="${customRepositoryAppVersion}"
 	 */
 	protected String customRepositoryAppVersion;
+
+	/**
+	 * The name that the application will be deployed as. If not specified, the
+	 * name will be the artifactId
+	 * 
+	 * @parameter property="customDeploymentName"
+	 *            default-value="${customDeploymentName}"
+	 */
+	protected String customDeploymentName;
 
 	/**
 	 * MMC (Mule Management Console) URL

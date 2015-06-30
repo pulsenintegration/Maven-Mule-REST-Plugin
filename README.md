@@ -15,7 +15,7 @@ Example:
 				<plugin>
 					<groupId>org.mule.tools</groupId>
 					<artifactId>mule-mmc-rest-plugin</artifactId>
-					<version>1.3.0-SNAPSHOT</version>
+					<version>1.4.0-SNAPSHOT</version>
 				</plugin>
 			</plugins>
 		</build>
@@ -26,11 +26,18 @@ Example:
 
 There is only one goal, deploy. To call the plugin, do the following
 
-	mvn mule-mmc-rest-plugin:deploy
+- With a pom.xml containing all required parameters:
+
+		mvn mule-mmc-rest-plugin:deploy
+			
+- With a pom.xml missing MMC parameters:
+
+		mvn com.github.nicholasastuart:mule-mmc-rest-plugin:[ARTIFACT_VERSION]:deploy -DmmcUsername=[USERNAME] -DmmcPassword=[PASSWORD] -DmmcApiUrl=[MMC_URL] -DtargetDeploymentServer=[SERVER_OR_GROUP]
+
+- Without pom.xml
+
+		mvn com.github.nicholasastuart:mule-mmc-rest-plugin:[ARTIFACT_VERSION]:deploy -DmmcUsername=[USERNAME] -DmmcPassword=[PASSWORD] -DmmcApiUrl=[MMC_URL] -DtargetDeploymentServer=[SERVER_OR_GROUP] -DcustomMuleAppFilePath=[PATH_TO_MULE_PACKAGE] 
 	
-	or 
-	
-	mvn com.github.nicholasastuart:mule-mmc-rest-plugin:[ARTIFACT_VERSION]:deploy -Dopt1=val1 -Dopt2=val2 ...
 	
 This goal will
 *   delete an existing mule application archive from the MMC Repository if version contains "SNAPSHOT"
@@ -47,61 +54,70 @@ In order to post to the Mule Repository, you need only these permissions:
 
 ## Configuration Options ##
 <table>
+<tr>
+	<th>Property
+	<th>Description
+	<th>Default
+    <th>Mandatory
+    
 	<tr>
-		<th>Property
-		<th>Description
-		<th>Default
-<tr>
-	<td>
-		mmcApiUrl
-	<td>
-		The URL of the Mule Management Console API (usually .../api)
-	<td>
-		
-<tr>
-	<td>
-		repositoryAppName
-	<td>
-		Name of the application when it is uploaded to the repository
-	<td>
-		Artifact name
-<tr>
-	<td>
-		deploymentName
-	<td>
-		Name of the deployment when it is deployed on the server or group
-	<td>
-		Artifact name
-<tr>
-	<td>
-		version
-	<td>
-		The version given to the uploaded application on the repository
-	<td>
-		Project version (from the pom.xml) unless <code>useTimestampVersion</code> is set to true
-<tr>
-	<td>
-		useTimestampVersion
-	<td>
-		If set to true, the version is a timestamp in "MM-dd-yyyy-HH:mm:ss" format
-	<td>
-		false
-<tr>
-	<td>
-		serverOrGroup
-	<td>
-		The name of the server or server group where to deploy the application
-	<td>
-<tr>
-	<td>
-		mmcUsername
-	<td>
-		The username to the Mule MMC API.
-	<td>
-<tr>
-	<td>
-		mmcPassword
-	<td>
-		The password to the Mule MMC API.
-	<td>
+		<td>mmcApiUrl
+		<td>The URL of the Mule Management Console API (usually http://[IP_OR_HOST_NAME:8080]/mmc/api).
+		<td>Empty
+		<td>Yes
+	<tr>
+		<td>mmcUsername
+		<td>The username to the Mule MMC API.
+		<td>Empty
+		<td>Yes
+	<tr>
+		<td>mmcPassword
+		<td>The password to the Mule MMC API.
+		<td>Empty
+		<td>Yes
+	<tr>
+		<td>targetDeploymentServer
+		<td>The name of the server or server group where to deploy the application.
+		<td>Empty
+		<td>Yes
+	<tr>
+		<td>artifactId
+		<td>Id of the artifact from the pom.xml. Used as default app name and/or deployment name if not overridden by custom options.
+		<td>Depends on the pom.xml
+		<td>No
+	<tr>
+		<td>version
+		<td>Version from the pom.xml. Used as Mule app version on the repository if not overridden by custom options.	
+		<td>Depends on the pom.xml
+		<td>No
+	<tr>
+		<td>useTimestampVersion
+		<td>If set to true, the version of the app in the repository is a timestamp in "MM-dd-yyyy-HH:mm:ss" format.
+		<td>false
+		<td>No
+	<tr>
+		<td>customMuleAppFilePath
+		<td>If specified, allows the plugin to be used without pom.xml. Should be a valid path to a Mule application package. The name and the version will be taken from the file name if not overridden by custom options.	
+		<td>Empty
+		<td>No
+	<tr>
+		<td>customRepositoryAppName
+		<td>Overrides the name of the Mule app on the repository.
+		<td>Empty
+		<td>No
+	<tr>
+		<td>customRepositoryAppVersion
+		<td>Overrides the version of the Mule app on the repository.
+		<td>Empty
+		<td>No
+	<tr>
+		<td>customDeploymentName
+		<td>Overrides the name of the deployment.
+		<td>Empty
+		<td>No
+	<tr>
+		<td>deploymentTimeoutMs
+		<td>Specifies the time to wait for the uploaded application to reach the deployed state before a timeout error occurs.
+		<td>30000
+		<td>No
 </table> 
