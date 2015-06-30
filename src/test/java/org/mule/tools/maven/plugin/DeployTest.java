@@ -8,6 +8,7 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.plugin.logging.SystemStreamLog;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,19 +38,21 @@ public class DeployTest {
 
 	private File _muleAppFile;
 
+	private File _tempDirectory;
+
 	@Before
 	public void setup() throws Exception {
 		deploy = spy(new Deploy());
 
-		File tempDirectory = File.createTempFile("DeployUT", "");
-		if (tempDirectory.exists()) {
-			tempDirectory.delete();
+		_tempDirectory = File.createTempFile("DeployUT", "");
+		if (_tempDirectory.exists()) {
+			_tempDirectory.delete();
 		}
-		tempDirectory.mkdir();
+		_tempDirectory.mkdir();
 
 		String finalName = ARTIFACT_ID + "-" + VERSION;
 
-		_muleAppFile = new File(tempDirectory, finalName + ".zip");
+		_muleAppFile = new File(_tempDirectory, finalName + ".zip");
 		_muleAppFile.createNewFile();
 
 		setupMocks();
@@ -60,11 +63,16 @@ public class DeployTest {
 		deploy.artifactId = ARTIFACT_ID;
 		deploy.version = VERSION;
 		deploy.finalName = finalName;
-		deploy.outputDirectory = tempDirectory.getAbsolutePath();
+		deploy.outputDirectory = _tempDirectory.getAbsolutePath();
 		deploy.mmcApiUrl = "http://localhost:8080/mmc/api";
 		deploy.mmcUsername = MMC_USERNAME;
 		deploy.mmcPassword = MMC_PASSWORD;
 		deploy.targetDeploymentServer = TARGET_DEPLOYMENT_SERVER;
+	}
+
+	@After
+	public void cleanup() throws Exception {
+		_tempDirectory.delete();
 	}
 
 	private void setupMocks() throws Exception {
@@ -131,8 +139,8 @@ public class DeployTest {
 
 		deploy.execute();
 		verify(mockMuleRest).restfullyUploadRepository(expectedRepositoryAppName, VERSION, _muleAppFile);
-	}	
-	
+	}
+
 	@Test
 	public void testCustomRepositoryVersion() throws MojoExecutionException, MojoFailureException, IOException {
 		String expectedRepositoryVersion = "MyCustomVersion";
@@ -141,8 +149,8 @@ public class DeployTest {
 
 		deploy.execute();
 		verify(mockMuleRest).restfullyUploadRepository(ARTIFACT_ID, expectedRepositoryVersion, _muleAppFile);
-	}	
-	
+	}
+
 	@Test
 	public void testCustomDeploymentName() throws MojoExecutionException, MojoFailureException, IOException {
 		String expectedDeploymentName = "MyCustomDeploymentName";

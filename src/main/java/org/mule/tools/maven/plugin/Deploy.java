@@ -293,7 +293,13 @@ public class Deploy extends AbstractMojo {
 			}
 		}
 
-		File muleAppFile = customAppFilePathSpecified ? new File(this.outputDirectory, this.finalName + ".zip") : new File(this.customMuleAppFilePath);
+		File muleAppFile;
+		try {
+			muleAppFile = customAppFilePathSpecified ? new File(this.outputDirectory, this.finalName + ".zip") : FileFinder.find(this.customMuleAppFilePath);
+		} catch (Exception e) {
+			throw new MojoFailureException(e.getMessage(), e);
+		}
+
 		if (!muleAppFile.exists()) {
 			String specialMsg = customAppFilePathSpecified ? "Make sure the specified Mule file exists." : "Make sure the file has been previously generated.";
 
