@@ -76,6 +76,13 @@ public class Deploy extends AbstractMojo {
 	protected Boolean useTimestampVersion = false;
 
 	/**
+	 * If true all parameters inherited from pom.xml values are ignored
+	 * 
+	 * @parameter property="noPomMode" default-value="${noPomMode}"
+	 */
+	protected boolean noPomMode = false;
+
+	/**
 	 * If specified, overrides the default location of the Mule app to deploy.
 	 * The default Mule app location is deduced from the Maven Mule app project
 	 * file (pom.xml). Overriding the Mule app file path can be useful when
@@ -170,8 +177,8 @@ public class Deploy extends AbstractMojo {
 
 		// Extract app name and version from Mule app file name
 		MuleFileInfo muleFileInfo = MuleFileInfo.parseFromFile(muleAppFile.getName());
-		String artifactIdToUse = StringUtils.isEmpty(this.artifactId) ? muleFileInfo.appName : this.artifactId;
-		String artifactVersionToUse = StringUtils.isEmpty(this.version) ? muleFileInfo.appVersion : this.version;
+		String artifactIdToUse = this.noPomMode ? muleFileInfo.appName : this.artifactId;
+		String artifactVersionToUse = this.noPomMode ? muleFileInfo.appVersion : this.version;
 
 		// Mule app version on the repository
 		String repositoryAppVersion = (this.useTimestampVersion) ? new SimpleDateFormat("MM-dd-yyyy-HH:mm:ss").format(Calendar.getInstance().getTime()) : (!StringUtils.isEmpty(this.customRepositoryAppVersion) ? this.customRepositoryAppVersion : artifactVersionToUse);
@@ -235,7 +242,7 @@ public class Deploy extends AbstractMojo {
 				}
 			}
 
-			_logger.info("Application \"" + finalName + "\" successfully deployed in deployment \"" + customDeploymentName + "\".");
+			_logger.info("Application \"" + muleAppFile.getAbsolutePath() + "\" successfully deployed in deployment \"" + customDeploymentName + "\".");
 
 		} catch (Exception e) {
 			throw new MojoFailureException("Error in attempting to deploy archive: " + e.toString(), e);
@@ -257,7 +264,7 @@ public class Deploy extends AbstractMojo {
 		this._logger.info("> App name on the repository : " + _getStrRepr(repositoryAppName));
 		this._logger.info("> App version on the repository : " + _getStrRepr(uploadedRepositoryVersion));
 
-		this._logger.info("> Application to deploy : " + _getStrRepr(deploymentName));
+		this._logger.info("> Name of the deployment : " + _getStrRepr(deploymentName));
 		this._logger.info("> Target server or group : " + _getStrRepr(targetDeploymentServer));
 		this._logger.info("> Deployment timeout (ms) : " + deploymentTimeoutMs);
 	}
@@ -283,29 +290,28 @@ public class Deploy extends AbstractMojo {
 
 	protected File getMuleAppFile() throws MojoFailureException {
 
-		boolean customAppFilePathSpecified = StringUtils.isEmpty(this.customMuleAppFilePath);
-		if (!customAppFilePathSpecified) {
+		if (this.noPomMode) {
+			if (StringUtils.isEmpty(this.customMuleAppFilePath)) {
+				throw new MojoFailureException("In noPomMode, customMuleAppFilePath should be specified");
+			}
+
+			try {
+				return FileFinder.find(this.customMuleAppFilePath);
+			} catch (Exception e) {
+				throw new MojoFailureException(e.getMessage());
+			}
+
+		} else {
 			if (StringUtils.isEmpty(this.outputDirectory)) {
 				throw new MojoFailureException("Output directory undefined, make sure the pom.xml contains a valid path for project.build.directory");
 			}
 			if (StringUtils.isEmpty(this.finalName)) {
 				throw new MojoFailureException("Final name undefined, make sure the pom.xml contains a valid file name for project.build.finalName");
 			}
-		}
 
-		File muleAppFile;
-		try {
-			muleAppFile = customAppFilePathSpecified ? new File(this.outputDirectory, this.finalName + ".zip") : FileFinder.find(this.customMuleAppFilePath);
-		} catch (Exception e) {
-			throw new MojoFailureException(e.getMessage(), e);
-		}
+			return new File(this.outputDirectory, this.finalName + ".zip");
 
-		if (!muleAppFile.exists()) {
-			String specialMsg = customAppFilePathSpecified ? "Make sure the specified Mule file exists." : "Make sure the file has been previously generated.";
-
-			throw new MojoFailureException("No Mule application file found at \"" + muleAppFile.getAbsolutePath() + "\". " + specialMsg);
 		}
-		return muleAppFile;
 	}
 
 }
