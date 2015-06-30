@@ -15,7 +15,7 @@ Example:
 				<plugin>
 					<groupId>org.mule.tools</groupId>
 					<artifactId>mule-mmc-rest-plugin</artifactId>
-					<version>1.4.0-SNAPSHOT</version>
+					<version>1.4.1-SNAPSHOT</version>
 				</plugin>
 			</plugins>
 		</build>
@@ -97,7 +97,7 @@ In order to post to the Mule Repository, you need only these permissions:
 		<td>No
 	<tr>
 		<td>customMuleAppFilePath
-		<td>If specified, allows the plugin to be used without pom.xml. Should be a valid path to a Mule application package. The name and the version will be taken from the file name if not overridden by custom options.	
+		<td>If specified, allows the plugin to be used without pom.xml. Should be a valid path or filter to a unique Mule application package. The name and the version will be taken from the file name if not overridden by custom options.	
 		<td>Empty
 		<td>No
 	<tr>

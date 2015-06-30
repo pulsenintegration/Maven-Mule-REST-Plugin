@@ -3,7 +3,7 @@
 
 	<groupId>com.github.nicholasastuart</groupId>
 	<artifactId>mule-mmc-rest-plugin</artifactId>
-	<version>1.4.0-SNAPSHOT</version>
+	<version>1.4.1-SNAPSHOT</version>
 	<packaging>maven-plugin</packaging>
 	<name>Mule MMC REST Plugin</name>
 	<description>Maven plugin for performing RESTful actions to the Mule ESB MMC</description>
@@ -90,9 +90,9 @@
 			<classifier>standalone</classifier>
 		</dependency>
 		<dependency>
-			<groupId>org.mockito</groupId>
-			<artifactId>mockito-all</artifactId>
-			<version>1.9.5</version>
+			<groupId>org.powermock</groupId>
+			<artifactId>powermock-api-mockito</artifactId>
+			<version>1.6.2</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
@@ -131,8 +131,8 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
-					<target>1.6</target>
-					<source>1.6</source>
+					<target>1.7</target>
+					<source>1.7</source>
 				</configuration>
 			</plugin>
 		</plugins>
