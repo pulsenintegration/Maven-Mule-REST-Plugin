@@ -22,6 +22,7 @@ import org.slf4j.impl.StaticLoggerBinder;
  * @execute phase="compile"
  * @requiresDirectInvocation true
  * @requiresDependencyResolution runtime
+ * @requiresProject false
  * 
  * @author Nicholas A. Stuart
  * @author Mohamed EL HABIB
@@ -34,45 +35,35 @@ public class Deploy extends AbstractMojo {
 	private Logger _logger;
 
 	/**
-	 * Directory containing the generated Mule App.
+	 * The output directory coming from the pom.xml of the Mule app. This
+	 * directory the location where the Mule app artifact is generated.
 	 * 
 	 * @parameter property="outputDirectory"
 	 *            default-value="${project.build.directory}"
 	 * @required
 	 */
-	protected File outputDirectory;
+	protected String outputDirectory;
 
 	/**
-	 * Name of the generated Mule App without extension. (This field is
-	 * initialized with internal Maven variable ${project.build.finalName} which
-	 * is corresponding to the Mule application artifact name)
+	 * The full name of the artifact (without extension) coming from the pom.xml
+	 * of the Mule app
 	 * 
-	 * @parameter property="muleAppFileNameWithoutExt"
+	 * @parameter property="finalName"
 	 *            default-value="${project.build.finalName}"
 	 * @required
 	 */
-	protected String muleAppFileNameWithoutExt;
+	protected String finalName;
 
 	/**
-	 * The name of the application in the repository. Default is
-	 * "MuleApplication"
-	 * 
-	 * @parameter property="repositoryAppName"
-	 *            default-value="${repositoryAppName}"
-	 */
-	protected String repositoryAppName;
-
-	/**
-	 * The name that the application will be deployed as. Default is same as
+	 * The artifactId coming from the pom.xml of the Mule app
 	 * {@link Deploy#name}
 	 * 
-	 * @parameter property="deploymentName" default-value="${deploymentName}"
+	 * @parameter property="artifactId" default-value="${project.artifactId}"
 	 */
-	protected String deploymentName;
+	protected String artifactId;
 
 	/**
-	 * The version that the application will be have in the repository. Default
-	 * is the project version.
+	 * The version coming from the pom.xml of the Mule app
 	 * 
 	 * @parameter property="version" default-value="${project.version}"
 	 */
@@ -83,6 +74,52 @@ public class Deploy extends AbstractMojo {
 	 *            default-value="${useTimestampVersion}"
 	 */
 	protected Boolean useTimestampVersion = false;
+
+	/**
+	 * If specified, overrides the default location of the Mule app to deploy.
+	 * The default Mule app location is deduced from the Maven Mule app project
+	 * file (pom.xml). Overriding the Mule app file path can be useful when
+	 * deploying an application outside of a project.
+	 * 
+	 * @parameter property="customMuleAppFilePath"
+	 *            default-value="${customMuleAppFilePath}"
+	 */
+	protected String customMuleAppFilePath;
+
+	/**
+	 * The name that the application will have on the repository. If not
+	 * specified, the name will be the artifactId
+	 * 
+	 * @parameter property="customRepositoryAppName"
+	 *            default-value="${customRepositoryAppName}"
+	 */
+	protected String customRepositoryAppName;
+
+	/**
+	 * The version that the application will have on the repository. If not
+	 * specified, the version will be taken from the pom.xml
+	 * 
+	 * @parameter property="customRepositoryAppVersion"
+	 *            default-value="${customRepositoryAppVersion}"
+	 */
+	protected String customRepositoryAppVersion;
+
+	/**
+	 * The name that the application will be deployed as. If not specified, the
+	 * name will be the artifactId
+	 * 
+	 * @parameter property="customDeploymentName"
+	 *            default-value="${customDeploymentName}"
+	 */
+	protected String customDeploymentName;
+
+	/**
+	 * MMC (Mule Management Console) URL
+	 * 
+	 * @parameter property="mmcApiUrl" default-value="${mmcApiUrl}"
+	 * @required
+	 */
+	protected String mmcApiUrl;
 
 	/**
 	 * MMC login username
@@ -101,20 +138,13 @@ public class Deploy extends AbstractMojo {
 	protected String mmcPassword;
 
 	/**
-	 * MMC (Mule Management Console) URL
-	 * 
-	 * @parameter property="mmcApiUrl" default-value="${mmcApiUrl}"
-	 * @required
-	 */
-	protected URL mmcApiUrl;
-
-	/**
 	 * Name of the server or server group where to deploy the Mule application
 	 * 
-	 * @parameter property="serverOrGroup" default-value="${serverOrGroup}"
+	 * @parameter property="targetDeploymentServer"
+	 *            default-value="${targetDeploymentServer}"
 	 * @required
 	 */
-	protected String serverOrGroup;
+	protected String targetDeploymentServer;
 
 	/**
 	 * Time to wait for application to be deployed before throwing exception
@@ -123,8 +153,6 @@ public class Deploy extends AbstractMojo {
 	 *            default-value="${deploymentTimeoutMs}"
 	 */
 	protected int deploymentTimeoutMs = DEPLOYMENT_TIMEOUT_MS;
-
-	private MuleRest _muleRest;
 
 	/**
 	 * Constructor
@@ -137,42 +165,52 @@ public class Deploy extends AbstractMojo {
 	@Override
 	public void execute() throws MojoExecutionException, MojoFailureException {
 
-		if (StringUtils.isEmpty(repositoryAppName)) {
-			repositoryAppName = this.muleAppFileNameWithoutExt;
-		}
+		// Mule zip file to use
+		File muleAppFile = this.getMuleAppFile();
 
-		if (StringUtils.isEmpty(deploymentName)) {
-			deploymentName = this.muleAppFileNameWithoutExt;
-		}
+		// Extract app name and version from Mule app file name
+		MuleFileInfo muleFileInfo = MuleFileInfo.parseFromFile(muleAppFile.getName());
+		String artifactIdToUse = StringUtils.isEmpty(this.artifactId) ? muleFileInfo.appName : this.artifactId;
+		String artifactVersionToUse = StringUtils.isEmpty(this.version) ? muleFileInfo.appVersion : this.version;
 
-		if (this.useTimestampVersion) {
-			version = new SimpleDateFormat("MM-dd-yyyy-HH:mm:ss").format(Calendar.getInstance().getTime());
-		}
+		// Mule app version on the repository
+		String repositoryAppVersion = (this.useTimestampVersion) ? new SimpleDateFormat("MM-dd-yyyy-HH:mm:ss").format(Calendar.getInstance().getTime()) : (!StringUtils.isEmpty(this.customRepositoryAppVersion) ? this.customRepositoryAppVersion : artifactVersionToUse);
 
-		if (mmcUsername == null || mmcPassword == null) {
+		// Name of the Mule app on the repository
+		String repositoryAppName = StringUtils.isEmpty(this.customRepositoryAppName) ? artifactIdToUse : this.customRepositoryAppName;
+
+		// Name of the deployment
+		String deploymentName = StringUtils.isEmpty(this.customDeploymentName) ? artifactIdToUse : this.customDeploymentName;
+
+		// MMC username and password
+		String mmcUsername, mmcPassword;
+		if (this.mmcUsername == null || this.mmcPassword == null) {
 			throw new MojoFailureException("mmcUsername and/or mmcPassword not set.");
 		}
+		mmcUsername = this.mmcUsername;
+		mmcPassword = this.mmcUsername;
 
-		if (outputDirectory == null) {
-			throw new MojoFailureException("outputDirectory not set.");
-		}
-		if (muleAppFileNameWithoutExt == null) {
-			throw new MojoFailureException("muleAppFileName not set.");
-		}
-		if (serverOrGroup == null) {
-			throw new MojoFailureException("serverOrGroup not set.");
-		}
+		// URL of the MMC
+		URL mmcApiUrl = getMmcApiUrl();
 
-		File muleZipFile = getMuleZipFile(outputDirectory, muleAppFileNameWithoutExt);
+		// Target deployment server
+		String targetDeploymentServer;
+		if (StringUtils.isEmpty(this.targetDeploymentServer)) {
+			throw new MojoFailureException("targetDeploymentServer is undefined.");
+		}
+		targetDeploymentServer = this.targetDeploymentServer;
 
-		_logDeploymentSummary(muleZipFile.toString());
+		// Deployment timeout
+		int deploymentTimeoutMs = this.deploymentTimeoutMs;
+
+		_logDeploymentSummary(muleAppFile.getAbsolutePath(), mmcApiUrl.getPath(), mmcUsername, mmcPassword, repositoryAppName, repositoryAppVersion, deploymentName, targetDeploymentServer, deploymentTimeoutMs);
 
 		try {
-			_muleRest = buildMuleRest();
+			MuleRest muleRest = _createMuleRest(mmcUsername, mmcPassword, mmcApiUrl);
 
-			String versionId = _muleRest.restfullyUploadRepository(this.repositoryAppName, version, muleZipFile);
-			String deploymentId = _muleRest.restfullyCreateDeployment(serverOrGroup, deploymentName, versionId);
-			_muleRest.restfullyDeployDeploymentById(deploymentId);
+			String versionId = muleRest.restfullyUploadRepository(repositoryAppName, repositoryAppVersion, muleAppFile);
+			String deploymentId = muleRest.restfullyCreateDeployment(targetDeploymentServer, deploymentName, versionId);
+			muleRest.restfullyDeployDeploymentById(deploymentId);
 
 			DeploymentState deploymentState = null;
 
@@ -180,7 +218,7 @@ public class Deploy extends AbstractMojo {
 
 			// Wait for application to be deployed
 			while (true) {
-				deploymentState = _muleRest.restfullyGetDeploymentState(deploymentId);
+				deploymentState = muleRest.restfullyGetDeploymentState(deploymentId);
 				if (deploymentState.status == DeploymentStatus.IN_PROGRESS) {
 					long elaspedTime = System.currentTimeMillis() - startTime;
 
@@ -197,39 +235,71 @@ public class Deploy extends AbstractMojo {
 				}
 			}
 
-			_logger.info("Application \"" + muleAppFileNameWithoutExt + "\" successfully deployed in deployment \"" + deploymentName + "\".");
+			_logger.info("Application \"" + finalName + "\" successfully deployed in deployment \"" + customDeploymentName + "\".");
 
 		} catch (Exception e) {
 			throw new MojoFailureException("Error in attempting to deploy archive: " + e.toString(), e);
 		}
 	}
 
-	private void _logDeploymentSummary(String muleZipFile) {
+	private static String _getStrRepr(String str) {
+		return str == null ? "null" : "\"" + str + "\"";
+	}
+
+	private void _logDeploymentSummary(String muleZipFile, String mmcApiUrl, String mmcUsername, String mmcPassword, String repositoryAppName, String uploadedRepositoryVersion, String deploymentName, String targetDeploymentServer, int deploymentTimeoutMs) {
 		this._logger.info("___MULE APPLICATION DEPLOYMENT SUMMARY___");
 		this._logger.info("> Artifact to be deployed : " + (muleZipFile == null ? "null" : "\"" + muleZipFile + "\""));
 
-		this._logger.info("> MMC URL : " + (this.mmcApiUrl == null ? "null" : "\"" + this.mmcApiUrl + "\""));
-		this._logger.info("> Username : " + (this.mmcUsername == null ? "null" : "\"" + this.mmcUsername + "\""));
-		this._logger.info("> Password : " + (this.mmcPassword == null ? "null" : "\"" + this.mmcPassword + "\""));
+		this._logger.info("> MMC URL : " + _getStrRepr(mmcApiUrl));
+		this._logger.info("> Username : " + _getStrRepr(mmcUsername));
+		this._logger.info("> Password : " + _getStrRepr(mmcPassword));
 
-		this._logger.info("> App name on the repository : " + (this.repositoryAppName == null ? "null" : "\"" + this.repositoryAppName + "\""));
-		this._logger.info("> App version on the repository : " + (this.version == null ? "null" : "\"" + this.version + "\""));
+		this._logger.info("> App name on the repository : " + _getStrRepr(repositoryAppName));
+		this._logger.info("> App version on the repository : " + _getStrRepr(uploadedRepositoryVersion));
 
-		this._logger.info("> Application to deploy : " + (this.deploymentName == null ? "null" : "\"" + this.deploymentName + "\""));
-		this._logger.info("> Target server or group : " + (this.serverOrGroup == null ? "null" : "\"" + this.serverOrGroup + "\""));
-		this._logger.info("> Deployment timeout (ms) : " + this.deploymentTimeoutMs);
+		this._logger.info("> Application to deploy : " + _getStrRepr(deploymentName));
+		this._logger.info("> Target server or group : " + _getStrRepr(targetDeploymentServer));
+		this._logger.info("> Deployment timeout (ms) : " + deploymentTimeoutMs);
 	}
 
-	protected File getMuleZipFile(File outputDirectory, String filename) throws MojoFailureException {
-		File file = new File(outputDirectory, filename + ".zip");
-		if (!file.exists()) {
-			throw new MojoFailureException("There no application ZIP file generated : check that you have configured the maven-mule-plugin to generated the this file");
+	private URL getMmcApiUrl() throws MojoFailureException {
+		if (StringUtils.isEmpty(this.mmcApiUrl)) {
+			throw new MojoFailureException("mmcApiUrl is not defined");
 		}
-		return file;
+
+		URL mmcUrl;
+		try {
+			mmcUrl = new URL(this.mmcApiUrl);
+		} catch (Exception ex) {
+			throw new MojoFailureException("Invalid mmcApiUrl \"" + this.mmcApiUrl + "\" : " + ex.getMessage());
+		}
+
+		return mmcUrl;
 	}
 
-	protected MuleRest buildMuleRest() {
+	protected MuleRest _createMuleRest(String mmcUsername, String mmcPassword, URL mmcApiUrl) {
 		return new MuleRest(mmcApiUrl, mmcUsername, mmcPassword);
+	}
+
+	protected File getMuleAppFile() throws MojoFailureException {
+
+		boolean customAppFilePathSpecified = StringUtils.isEmpty(this.customMuleAppFilePath);
+		if (!customAppFilePathSpecified) {
+			if (StringUtils.isEmpty(this.outputDirectory)) {
+				throw new MojoFailureException("Output directory undefined, make sure the pom.xml contains a valid path for project.build.directory");
+			}
+			if (StringUtils.isEmpty(this.finalName)) {
+				throw new MojoFailureException("Final name undefined, make sure the pom.xml contains a valid file name for project.build.finalName");
+			}
+		}
+
+		File muleAppFile = customAppFilePathSpecified ? new File(this.outputDirectory, this.finalName + ".zip") : new File(this.customMuleAppFilePath);
+		if (!muleAppFile.exists()) {
+			String specialMsg = customAppFilePathSpecified ? "Make sure the specified Mule file exists." : "Make sure the file has been previously generated.";
+
+			throw new MojoFailureException("No Mule application file found at \"" + muleAppFile.getAbsolutePath() + "\". " + specialMsg);
+		}
+		return muleAppFile;
 	}
 
 }
