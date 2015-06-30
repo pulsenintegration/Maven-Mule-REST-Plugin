@@ -1,6 +1,7 @@
 package org.mule.tools.maven.plugin;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URL;
 
 import org.apache.maven.plugin.MojoExecutionException;
@@ -18,58 +19,73 @@ import org.mule.tools.mmc.rest.MuleRest;
 import static org.mockito.Mockito.*;
 
 public class DeployTest {
-	private static final String VERSION_ID = "7959";
-	private static final String DEPLOYMENT_ID = "1234";
-	private static final String USER_NAME = "muleuser1";
-	private static final String PASSWORD = "pwd1234";
-	private static final String SERVER_GROUP = "Development";
-	private static final String REPOSITORY_APP_NAME = "MyMuleApp";
-	private static final String DEPLOYED_APP_NAME = "MyDeployedMuleApp";
-	private static final String ARTIFACT_APP_NAME = "MyArtifactMuleApp";
-	
+
+	private static final String ARTIFACT_ID = "my_mule_app";
+
+	private static final String MOCKED_VERSION_ID = "7959";
+	private static final String MOCKED_DEPLOYMENT_ID = "1234";
+
+	private static final String MMC_USERNAME = "muleuser1";
+	private static final String MMC_PASSWORD = "pwd1234";
+	private static final String TARGET_DEPLOYMENT_SERVER = "Development";
+
 	private static final String VERSION = "1.0-SNAPSHOT";
 
 	private Deploy deploy;
 
 	private MuleRest mockMuleRest;
 
-	File _artifactPath; 
-	
+	private File _muleAppFile;
+
 	@Before
 	public void setup() throws Exception {
 		deploy = spy(new Deploy());
-		
-		_artifactPath = new File("./mule-app.1.2.6-SNAPSHOT.zip");
-		
+
+		File tempDirectory = File.createTempFile("DeployUT", "");
+		if (tempDirectory.exists()) {
+			tempDirectory.delete();
+		}
+		tempDirectory.mkdir();
+
+		String finalName = ARTIFACT_ID + "-" + VERSION;
+
+		_muleAppFile = new File(tempDirectory, finalName + ".zip");
+		_muleAppFile.createNewFile();
+
 		setupMocks();
 		Log log = new SystemStreamLog();
 
 		deploy.setLog(log);
-		deploy.outputDirectory = File.createTempFile("456", null);
 
-		deploy.muleAppFileNameWithoutExt = ARTIFACT_APP_NAME;
-		deploy.mmcApiUrl = new URL("http", "localhost", 8080, "");
-		deploy.mmcUsername = USER_NAME;
-		deploy.mmcPassword = PASSWORD;
-		deploy.serverOrGroup = SERVER_GROUP;
-		deploy.repositoryAppName = REPOSITORY_APP_NAME;
-		deploy.deploymentName = DEPLOYED_APP_NAME;
+		deploy.artifactId = ARTIFACT_ID;
 		deploy.version = VERSION;
-		
+		deploy.finalName = finalName;
+		deploy.outputDirectory = tempDirectory.getAbsolutePath();
+		deploy.mmcApiUrl = "http://localhost:8080/mmc/api";
+		deploy.mmcUsername = MMC_USERNAME;
+		deploy.mmcPassword = MMC_PASSWORD;
+		deploy.targetDeploymentServer = TARGET_DEPLOYMENT_SERVER;
 	}
 
 	private void setupMocks() throws Exception {
-		doReturn(_artifactPath).when(deploy).getMuleZipFile(any(File.class), anyString());
 		mockMuleRest = mock(MuleRest.class);
-		when(deploy.buildMuleRest()).thenReturn(mockMuleRest);
-		when(mockMuleRest.restfullyUploadRepository(anyString(), anyString(), any(File.class))).thenReturn(VERSION_ID);
-		when(mockMuleRest.restfullyCreateDeployment(anyString(), anyString(), anyString())).thenReturn(DEPLOYMENT_ID);
-		
+		when(deploy._createMuleRest(anyString(), anyString(), any(URL.class))).thenReturn(mockMuleRest);
+		when(mockMuleRest.restfullyUploadRepository(anyString(), anyString(), any(File.class))).thenReturn(MOCKED_VERSION_ID);
+		when(mockMuleRest.restfullyCreateDeployment(anyString(), anyString(), anyString())).thenReturn(MOCKED_DEPLOYMENT_ID);
+
 		DeploymentState deploymentState = new DeploymentState();
-		
+
 		deploymentState.status = DeploymentStatus.DEPLOYED;
-		
+
 		when(mockMuleRest.restfullyGetDeploymentState(anyString())).thenReturn(deploymentState);
+	}
+
+	@Test
+	public void testNominal() throws Exception {
+		deploy.execute();
+		verify(mockMuleRest).restfullyUploadRepository(ARTIFACT_ID, VERSION, _muleAppFile);
+		verify(mockMuleRest).restfullyCreateDeployment(TARGET_DEPLOYMENT_SERVER, ARTIFACT_ID, MOCKED_VERSION_ID);
+		verify(mockMuleRest).restfullyDeployDeploymentById(MOCKED_DEPLOYMENT_ID);
 	}
 
 	@Test(expected = MojoFailureException.class)
@@ -95,30 +111,47 @@ public class DeployTest {
 
 	@Test(expected = MojoFailureException.class)
 	public void testFinalNameNull() throws MojoExecutionException, MojoFailureException {
-		deploy.muleAppFileNameWithoutExt = null;
+		deploy.finalName = null;
 		deploy.execute();
 		Assert.fail("Exception should have been thrown before this is called");
 	}
 
 	@Test(expected = MojoFailureException.class)
 	public void testServerGroupNull() throws MojoExecutionException, MojoFailureException {
-		deploy.serverOrGroup = null;
+		deploy.targetDeploymentServer = null;
 		deploy.execute();
 		Assert.fail("Exception should have been thrown before this is called");
 	}
 
 	@Test
-	public void testDeploymentNameNull() throws MojoExecutionException, MojoFailureException {
-		deploy.deploymentName = null;
+	public void testCustomRepositoryAppName() throws MojoExecutionException, MojoFailureException, IOException {
+		String expectedRepositoryAppName = "MyCustomRepoAppName";
+		deploy.customRepositoryAppName = expectedRepositoryAppName;
+		Assert.assertNotSame(expectedRepositoryAppName, deploy.artifactId);
+
 		deploy.execute();
-		Assert.assertEquals("When null, deploymentName should be the name of the artifact", ARTIFACT_APP_NAME, deploy.deploymentName);
+		verify(mockMuleRest).restfullyUploadRepository(expectedRepositoryAppName, VERSION, _muleAppFile);
+	}	
+	
+	@Test
+	public void testCustomRepositoryVersion() throws MojoExecutionException, MojoFailureException, IOException {
+		String expectedRepositoryVersion = "MyCustomVersion";
+		deploy.customRepositoryAppVersion = expectedRepositoryVersion;
+		Assert.assertNotSame(expectedRepositoryVersion, deploy.version);
+
+		deploy.execute();
+		verify(mockMuleRest).restfullyUploadRepository(ARTIFACT_ID, expectedRepositoryVersion, _muleAppFile);
+	}	
+	
+	@Test
+	public void testCustomDeploymentName() throws MojoExecutionException, MojoFailureException, IOException {
+		String expectedDeploymentName = "MyCustomDeploymentName";
+		deploy.customDeploymentName = expectedDeploymentName;
+		Assert.assertNotSame(expectedDeploymentName, deploy.artifactId);
+
+		deploy.execute();
+
+		verify(mockMuleRest).restfullyCreateDeployment(TARGET_DEPLOYMENT_SERVER, expectedDeploymentName, MOCKED_VERSION_ID);
 	}
 
-	@Test
-	public void testHappyPath() throws Exception {
-		deploy.execute();
-		verify(mockMuleRest).restfullyUploadRepository(REPOSITORY_APP_NAME, VERSION, _artifactPath);
-		verify(mockMuleRest).restfullyCreateDeployment(SERVER_GROUP, DEPLOYED_APP_NAME, VERSION_ID);
-		verify(mockMuleRest).restfullyDeployDeploymentById(DEPLOYMENT_ID);
-	}
 }

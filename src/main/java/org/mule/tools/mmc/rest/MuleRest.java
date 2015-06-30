@@ -82,7 +82,7 @@ public class MuleRest {
 	 * the version id. To deploy the application, see method
 	 * {@link #restfullyDeployDeploymentById(String)}
 	 * 
-	 * @param serverOrGroup
+	 * @param targetServerName
 	 *            Name of the server or group where to deploy the application
 	 * @param name
 	 *            Name of the deployment
@@ -92,14 +92,14 @@ public class MuleRest {
 	 * @throws IOException
 	 * @throws Exception
 	 */
-	public String restfullyCreateDeployment(String serverOrGroup, String name, String versionId) throws IOException {
-		String serverOrGroupId = restfullyGetServerGroupId(serverOrGroup);
+	public String restfullyCreateDeployment(String targetServerName, String name, String versionId) throws IOException {
+		String serverOrGroupId = restfullyGetServerGroupId(targetServerName);
 		if (StringUtils.isEmpty(serverOrGroupId)) {
-			serverOrGroupId = restfullyGetServerId(serverOrGroup);
+			serverOrGroupId = restfullyGetServerId(targetServerName);
 		}
 
 		if (StringUtils.isEmpty(serverOrGroupId)) {
-			throw new IllegalArgumentException("No group or server named \"" + serverOrGroup + "\" found");
+			throw new IllegalArgumentException("No group or server named \"" + targetServerName + "\" found");
 		}
 
 		// delete existing deployment before creating new one
@@ -352,9 +352,9 @@ public class MuleRest {
 	/**
 	 * Updloads application to the repository and returns the version id
 	 * 
-	 * @param name
+	 * @param appName
 	 *            Name of the application on the repository
-	 * @param version
+	 * @param appVersion
 	 *            version of the application on the repository
 	 * @param packageFile
 	 *            The application file
@@ -362,17 +362,17 @@ public class MuleRest {
 	 * @throws IOException
 	 */
 
-	public String restfullyUploadRepository(String name, String version, File packageFile) throws IOException {
+	public String restfullyUploadRepository(String appName, String appVersion, File packageFile) throws IOException {
 		WebClient webClient = _getWebClient("repository");
 		webClient.type("multipart/form-data");
 
 		try {
 			// delete application first
-			if (isSnapshotVersion(version)) {
-				restfullyDeleteApplication(name, version);
+			if (isSnapshotVersion(appVersion)) {
+				restfullyDeleteApplication(appName, appVersion);
 			}
-			Attachment nameAttachment = new AttachmentBuilder().id("name").object(name).contentDisposition(new ContentDisposition("form-data; name=\"name\"")).build();
-			Attachment versionAttachment = new AttachmentBuilder().id("version").object(version).contentDisposition(new ContentDisposition("form-data; name=\"version\"")).build();
+			Attachment nameAttachment = new AttachmentBuilder().id("name").object(appName).contentDisposition(new ContentDisposition("form-data; name=\"name\"")).build();
+			Attachment versionAttachment = new AttachmentBuilder().id("version").object(appVersion).contentDisposition(new ContentDisposition("form-data; name=\"version\"")).build();
 			Attachment fileAttachment = new Attachment("file", new FileInputStream(packageFile), new ContentDisposition("form-data; name=\"file\"; filename=\"" + packageFile.getName() + "\""));
 
 			MultipartBody multipartBody = new MultipartBody(Arrays.asList(fileAttachment, nameAttachment, versionAttachment), MediaType.MULTIPART_FORM_DATA_TYPE, true);
