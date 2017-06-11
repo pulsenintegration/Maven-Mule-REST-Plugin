@@ -149,7 +149,6 @@ public class Deploy extends AbstractMojo {
 	 * 
 	 * @parameter property="targetDeploymentServer"
 	 *            default-value="${targetDeploymentServer}"
-	 * @required
 	 */
 	protected String targetDeploymentServer;
 
@@ -161,6 +160,13 @@ public class Deploy extends AbstractMojo {
 	 */
 	protected int deploymentTimeoutMs = DEPLOYMENT_TIMEOUT_MS;
 
+	/**
+	 * If true an exception fail be thrown if the deployment fails  
+	 * 
+	 * @parameter property="throwIfDeployFails" default-value="${throwIfDeployFails}"
+	 */
+	protected boolean throwIfDeployFails = false;
+	
 	/**
 	 * Constructor
 	 */
@@ -195,17 +201,13 @@ public class Deploy extends AbstractMojo {
 			throw new MojoFailureException("mmcUsername and/or mmcPassword not set.");
 		}
 		mmcUsername = this.mmcUsername;
-		mmcPassword = this.mmcUsername;
+		mmcPassword = this.mmcPassword;
 
 		// URL of the MMC
 		URL mmcApiUrl = getMmcApiUrl();
 
 		// Target deployment server
-		String targetDeploymentServer;
-		if (StringUtils.isEmpty(this.targetDeploymentServer)) {
-			throw new MojoFailureException("targetDeploymentServer is undefined.");
-		}
-		targetDeploymentServer = this.targetDeploymentServer;
+		String targetDeploymentServer = this.targetDeploymentServer;
 
 		// Deployment timeout
 		int deploymentTimeoutMs = this.deploymentTimeoutMs;
@@ -216,34 +218,39 @@ public class Deploy extends AbstractMojo {
 			MuleRest muleRest = _createMuleRest(mmcUsername, mmcPassword, mmcApiUrl);
 
 			String versionId = muleRest.restfullyUploadRepository(repositoryAppName, repositoryAppVersion, muleAppFile);
-			String deploymentId = muleRest.restfullyCreateDeployment(targetDeploymentServer, deploymentName, versionId);
-			muleRest.restfullyDeployDeploymentById(deploymentId);
-
-			DeploymentState deploymentState = null;
-
-			long startTime = System.currentTimeMillis();
-
-			// Wait for application to be deployed
-			while (true) {
-				deploymentState = muleRest.restfullyGetDeploymentState(deploymentId);
-				if (deploymentState.status == DeploymentStatus.IN_PROGRESS) {
-					long elaspedTime = System.currentTimeMillis() - startTime;
-
-					if (elaspedTime > this.deploymentTimeoutMs) {
-						throw new TimeoutException("Timeout of \"" + deploymentTimeoutMs + "ms\" occurred while waiting for Mule application \"" + versionId + "\" to be deployed");
+			if (targetDeploymentServer != null) {
+				String deploymentId = muleRest.restfullyCreateDeployment(targetDeploymentServer, deploymentName, versionId);
+				muleRest.restfullyDeployDeploymentById(deploymentId);
+	
+				DeploymentState deploymentState = null;
+	
+				long startTime = System.currentTimeMillis();
+	
+				// Wait for application to be deployed
+				while (true) {
+					deploymentState = muleRest.restfullyGetDeploymentState(deploymentId);
+					if (deploymentState.status == DeploymentStatus.IN_PROGRESS) {
+						long elaspedTime = System.currentTimeMillis() - startTime;
+	
+						if (elaspedTime > this.deploymentTimeoutMs) {
+							throw new TimeoutException("Timeout of \"" + deploymentTimeoutMs + "ms\" occurred while waiting for Mule application \"" + versionId + "\" to be deployed");
+						}
+	
+						Thread.sleep(DEPLOYMENT_WAIT_SLEEP_MS);
+						continue;
+					} else if (deploymentState.status == DeploymentStatus.DEPLOYED) {
+						_logger.info("Application \"" + muleAppFile.getAbsolutePath() + "\" successfully deployed in deployment \"" + deploymentName + "\".");
+						break;
+					} else {
+						String msg = "Failed to deploy application with deployment id \"" + deploymentId + "\", unexpected deployment state \"" + deploymentState.status + "\"";
+						if (throwIfDeployFails) {
+							throw new Exception(msg);							
+						}
+						_logger.warn(msg);
+						break;
 					}
-
-					Thread.sleep(DEPLOYMENT_WAIT_SLEEP_MS);
-					continue;
-				} else if (deploymentState.status == DeploymentStatus.DEPLOYED) {
-					break;
-				} else {
-					throw new Exception("Failed to deploy application with deployment id \"" + deploymentId + "\", unexpected deployment state \"" + deploymentState.status + "\"");
 				}
 			}
-
-			_logger.info("Application \"" + muleAppFile.getAbsolutePath() + "\" successfully deployed in deployment \"" + customDeploymentName + "\".");
-
 		} catch (Exception e) {
 			throw new MojoFailureException("Error in attempting to deploy archive: " + e.toString(), e);
 		}
@@ -257,16 +264,18 @@ public class Deploy extends AbstractMojo {
 		this._logger.info("___MULE APPLICATION DEPLOYMENT SUMMARY___");
 		this._logger.info("> Artifact to be deployed : " + (muleZipFile == null ? "null" : "\"" + muleZipFile + "\""));
 
-		this._logger.info("> MMC URL : " + _getStrRepr(mmcApiUrl));
-		this._logger.info("> Username : " + _getStrRepr(mmcUsername));
-		this._logger.info("> Password : " + _getStrRepr(mmcPassword));
+		this._logger.debug("> MMC URL : " + _getStrRepr(mmcApiUrl));
+		this._logger.debug("> Username : " + _getStrRepr(mmcUsername));
+		this._logger.trace("> Password : " + _getStrRepr(mmcPassword));
 
 		this._logger.info("> App name on the repository : " + _getStrRepr(repositoryAppName));
 		this._logger.info("> App version on the repository : " + _getStrRepr(uploadedRepositoryVersion));
 
 		this._logger.info("> Name of the deployment : " + _getStrRepr(deploymentName));
-		this._logger.info("> Target server or group : " + _getStrRepr(targetDeploymentServer));
-		this._logger.info("> Deployment timeout (ms) : " + deploymentTimeoutMs);
+		if (targetDeploymentServer != null) {
+			this._logger.info("> Target server or group : " + _getStrRepr(targetDeploymentServer));
+		}
+		this._logger.debug("> Deployment timeout (ms) : " + deploymentTimeoutMs);
 	}
 
 	private URL getMmcApiUrl() throws MojoFailureException {

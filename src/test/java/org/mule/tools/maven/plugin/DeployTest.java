@@ -124,13 +124,6 @@ public class DeployTest {
 		Assert.fail("Exception should have been thrown before this is called");
 	}
 
-	@Test(expected = MojoFailureException.class)
-	public void testServerGroupNull() throws MojoExecutionException, MojoFailureException {
-		deploy.targetDeploymentServer = null;
-		deploy.execute();
-		Assert.fail("Exception should have been thrown before this is called");
-	}
-
 	@Test
 	public void testCustomRepositoryAppName() throws MojoExecutionException, MojoFailureException, IOException {
 		String expectedRepositoryAppName = "MyCustomRepoAppName";
