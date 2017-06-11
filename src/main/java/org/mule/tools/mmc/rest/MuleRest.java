@@ -21,6 +21,7 @@ import org.apache.cxf.jaxrs.ext.multipart.Attachment;
 import org.apache.cxf.jaxrs.ext.multipart.AttachmentBuilder;
 import org.apache.cxf.jaxrs.ext.multipart.ContentDisposition;
 import org.apache.cxf.jaxrs.ext.multipart.MultipartBody;
+import org.apache.cxf.transport.http.HTTPConduit;
 import org.apache.cxf.transport.http.HTTPException;
 import org.codehaus.jackson.JsonFactory;
 import org.codehaus.jackson.JsonGenerator;
@@ -54,8 +55,18 @@ public class MuleRest {
 
 	private WebClient _getWebClient(String... paths) {
 		WebClient webClient = WebClient.create(mmcUrl.toString(), username, password, null);
+		HTTPConduit conduit = WebClient.getConfig(webClient).getHttpConduit();
+        conduit.getClient().setReceiveTimeout(1000000);
 		for (String path : paths) {
 			webClient.path(path);
+		}
+		if (_logger.isTraceEnabled()) {
+			StringBuilder sb = new StringBuilder();
+			for (String path : paths) {
+				sb.append('/');
+				sb.append(path);
+			}
+			_logger.trace("WebClient path: "+sb.toString());
 		}
 		return webClient;
 	}
@@ -66,7 +77,9 @@ public class MuleRest {
 
 		if (statusCode == Status.OK.getStatusCode() || statusCode == Status.CREATED.getStatusCode()) {
 			return responseText;
-		} else if (statusCode == Status.NOT_FOUND.getStatusCode()) {
+		}
+		_logger.trace("MMC Response: {}", responseText);
+		if (statusCode == Status.NOT_FOUND.getStatusCode()) {
 			throw new HTTPException(statusCode, "The resource was not found.", mmcUrl);
 		} else if (statusCode == Status.CONFLICT.getStatusCode()) {
 			throw new HTTPException(statusCode, "The operation was unsuccessful because a resource with that name already exists.", mmcUrl);
@@ -93,6 +106,7 @@ public class MuleRest {
 	 * @throws Exception
 	 */
 	public String restfullyCreateDeployment(String targetServerName, String name, String versionId) throws IOException {
+		_logger.trace("START: restfullyCreateDeployment");
 		String serverOrGroupId = restfullyGetServerGroupId(targetServerName);
 		if (StringUtils.isEmpty(serverOrGroupId)) {
 			serverOrGroupId = restfullyGetServerId(targetServerName);
@@ -125,9 +139,25 @@ public class MuleRest {
 			jGenerator.writeEndObject(); // }
 			jGenerator.close();
 
-			Response response = webClient.post(stringWriter.toString());
-
-			String responseText = _processResponse(response);
+			int retries = 0;
+			String responseText;
+			while (true) {
+				_logger.trace("POST \n"+stringWriter.toString());
+				Response response = webClient.post(stringWriter.toString());
+				
+				try {
+					responseText = _processResponse(response);
+					break;
+				} 
+				catch (HTTPException he) {
+					if (retries > 1) {
+						throw he;
+					}
+					sleep(1000);
+					_logger.info("Retrying...");
+					retries++;
+				}
+			}
 			JsonNode jsonNode = OBJECT_MAPPER.readTree(responseText);
 			String deploymentId = jsonNode.path("id").getTextValue();
 
@@ -136,6 +166,7 @@ public class MuleRest {
 			return deploymentId;
 		} finally {
 			webClient.close();
+			_logger.trace("END: restfullyCreateDeployment");
 		}
 	}
 
@@ -147,14 +178,30 @@ public class MuleRest {
 	}
 
 	public void restfullyDeleteDeploymentById(String deploymentId) throws IOException {
+		_logger.trace("START: restfullyDeleteDeploymentById");
 		WebClient webClient = _getWebClient("deployments", deploymentId);
 
 		try {
-			Response response = webClient.delete();
-			_processResponse(response);
+			int retries = 0;
+			while (true) {
+				try {
+					_logger.trace("DELETE");
+					Response response = webClient.delete();
+					_processResponse(response);
+					break;
+				} catch (HTTPException he) {
+					if (retries > 1) {
+						throw he;
+					}
+					sleep(1000);
+					_logger.info("Retrying...");
+					retries++;					
+				}
+			}
 		} finally {
 			webClient.close();
 		}
+		_logger.trace("END: restfullyDeleteDeploymentById");
 	}
 
 	/**
@@ -165,15 +212,32 @@ public class MuleRest {
 	 * @throws IOException
 	 */
 	public void restfullyDeployDeploymentById(String deploymentId) throws IOException {
+		_logger.trace("START: restfullyDeployDeploymentById");
 		WebClient webClient = _getWebClient("deployments", deploymentId, "deploy");
 
 		try {
-			Response response = webClient.post(null);
-			String responseText = _processResponse(response);
-			_logger.info("Application deployed with answer \"" + responseText + "\"");
+			int retries = 0;
+			while (true) {
+				_logger.trace("POST");
+				Response response = webClient.post(null);
+				try {
+					String responseText = _processResponse(response);
+					_logger.info("Application deployed with answer \"" + responseText + "\"");
+					break;
+				} 
+				catch (HTTPException he) {
+					if (retries > 1) {
+						throw he;
+					}
+					sleep(1000);
+					_logger.info("Retrying...");
+					retries++;					
+				}
+			}
 		} finally {
 			webClient.close();
 		}
+		_logger.trace("END: restfullyDeployDeploymentById");
 	}
 
 	/**
@@ -184,10 +248,12 @@ public class MuleRest {
 	 * @throws IOException
 	 */
 	public String restfullyGetDeploymentIdByName(String deploymentName) throws IOException {
+		_logger.trace("START: restfullyGetDeploymentIdByName");
 		WebClient webClient = _getWebClient("deployments");
 
 		String deploymentId = null;
 		try {
+			_logger.trace("GET");
 			Response response = webClient.get();
 
 			String responseText = _processResponse(response);
@@ -202,6 +268,7 @@ public class MuleRest {
 		} finally {
 			webClient.close();
 		}
+		_logger.trace("END: restfullyGetDeploymentIdByName");
 		return deploymentId;
 	}
 
@@ -213,8 +280,10 @@ public class MuleRest {
 	 * @throws IOException
 	 */
 	public DeploymentState restfullyGetDeploymentState(String deploymentId) throws IOException {
+		_logger.trace("START: restfullyGetDeploymentState");
 		WebClient webClient = _getWebClient("deployments", deploymentId);
 		try {
+			_logger.trace("GET");
 			Response response = webClient.get();
 			String responseText = _processResponse(response);
 
@@ -229,14 +298,17 @@ public class MuleRest {
 
 		} finally {
 			webClient.close();
+			_logger.trace("END: restfullyGetDeploymentState");
 		}
 	}
 
 	public String restfullyGetApplicationId(String name, String version) throws IOException {
+		_logger.trace("START: restfullyGetApplicationId");
 		WebClient webClient = _getWebClient("repository");
 
 		String applicationId = null;
 		try {
+			_logger.trace("GET");
 			Response response = webClient.get();
 
 			String responseText = _processResponse(response);
@@ -256,6 +328,7 @@ public class MuleRest {
 		} finally {
 			webClient.close();
 		}
+		_logger.trace("END: restfullyGetApplicationId");
 		return applicationId;
 	}
 
@@ -267,9 +340,11 @@ public class MuleRest {
 	 * @throws IOException
 	 */
 	public final String restfullyGetServerGroupId(String serverGroupName) throws IOException {
+		_logger.trace("START: restfullyGetServerGroupId");
 		String serverGroupId = null;
 		WebClient webClient = _getWebClient("serverGroups");
 		try {
+			_logger.trace("GET");
 			Response response = webClient.get();
 
 			String responseText = _processResponse(response);
@@ -284,6 +359,7 @@ public class MuleRest {
 			return serverGroupId;
 		} finally {
 			webClient.close();
+			_logger.trace("END: restfullyGetServerGroupId");
 		}
 	}
 
@@ -295,10 +371,12 @@ public class MuleRest {
 	 * @throws IOException
 	 */
 	public Set<String> restfullyGetServerIdsInGroup(String serverGroupName) throws IOException {
+		_logger.trace("START: restfullyGetServerIdsInGroup");
 		Set<String> serversId = new TreeSet<String>();
 		WebClient webClient = _getWebClient("servers");
 
 		try {
+			_logger.trace("GET");
 			Response response = webClient.get();
 
 			String responseText = _processResponse(response);
@@ -317,6 +395,7 @@ public class MuleRest {
 		} finally {
 			webClient.close();
 		}
+		_logger.trace("END: restfullyGetServerIdsInGroup");
 		return serversId;
 	}
 
@@ -328,10 +407,12 @@ public class MuleRest {
 	 * @throws IOException
 	 */
 	public String restfullyGetServerId(String serverName) throws IOException {
+		_logger.trace("START: restfullyGetServerId");
 		String serverId = null;
 		WebClient webClient = _getWebClient("servers");
 
 		try {
+			_logger.trace("GET");
 			Response response = webClient.get();
 			String responseText = _processResponse(response);
 			JsonNode jsonNode = OBJECT_MAPPER.readTree(responseText);
@@ -346,11 +427,12 @@ public class MuleRest {
 			return serverId;
 		} finally {
 			webClient.close();
+			_logger.trace("END: restfullyGetServerId");
 		}
 	}
 
 	/**
-	 * Updloads application to the repository and returns the version id
+	 * Uploads application to the repository and returns the version id
 	 * 
 	 * @param appName
 	 *            Name of the application on the repository
@@ -363,6 +445,7 @@ public class MuleRest {
 	 */
 
 	public String restfullyUploadRepository(String appName, String appVersion, File packageFile) throws IOException {
+		_logger.trace("START: restfullyUploadRepository");
 		WebClient webClient = _getWebClient("repository");
 		webClient.type("multipart/form-data");
 
@@ -377,6 +460,7 @@ public class MuleRest {
 
 			MultipartBody multipartBody = new MultipartBody(Arrays.asList(fileAttachment, nameAttachment, versionAttachment), MediaType.MULTIPART_FORM_DATA_TYPE, true);
 
+			_logger.trace("POST");
 			Response response = webClient.post(multipartBody);
 
 			String responseObject = _processResponse(response);
@@ -386,28 +470,53 @@ public class MuleRest {
 			return result.path("versionId").getTextValue();
 		} finally {
 			webClient.close();
+			_logger.trace("END: restfullyUploadRepository");
 		}
 	}
 
 	public void restfullyDeleteApplicationById(String applicationVersionId) throws IOException {
+		_logger.trace("START: restfullyDeleteApplicationById");
 		WebClient webClient = _getWebClient("repository", applicationVersionId);
 
 		try {
+			_logger.trace("DELETE");
 			Response response = webClient.delete();
 			_processResponse(response);
 		} finally {
 			webClient.close();
+			_logger.trace("END: restfullyDeleteApplicationById");
 		}
 	}
 
 	public void restfullyDeleteApplication(String applicationName, String version) throws IOException {
-		String applicationVersionId = restfullyGetApplicationId(applicationName, version);
-		if (applicationVersionId != null) {
-			restfullyDeleteApplicationById(applicationVersionId);
+		int retries = 0;
+		while (true) {
+			try {
+				String applicationVersionId = restfullyGetApplicationId(applicationName, version);
+				if (applicationVersionId != null) {
+					restfullyDeleteApplicationById(applicationVersionId);
+				}
+				break;
+			}
+			catch (HTTPException he) {
+				if (retries > 1) {
+					throw he;
+				}
+				sleep(1000);
+				_logger.info("Retrying...");
+				retries++;					
+			}
 		}
 	}
 
 	protected boolean isSnapshotVersion(String version) {
 		return version.contains(SNAPSHOT);
+	}
+	
+	private void sleep(long millis) {
+		try {
+			Thread.sleep(millis);
+		} catch (InterruptedException e) {
+		}
 	}
 }
