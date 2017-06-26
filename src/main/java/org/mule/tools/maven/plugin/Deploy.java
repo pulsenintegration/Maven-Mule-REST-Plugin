@@ -18,14 +18,16 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.impl.StaticLoggerBinder;
 
 /**
+ * @aggregator
  * @goal deploy
- * @execute phase="compile"
+ * @phase deploy
  * @requiresDirectInvocation true
  * @requiresDependencyResolution runtime
  * @requiresProject false
  * 
  * @author Nicholas A. Stuart
  * @author Mohamed EL HABIB
+ * @author Henrik Karlsson
  */
 public class Deploy extends AbstractMojo {
 
