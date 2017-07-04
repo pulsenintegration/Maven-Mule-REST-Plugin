@@ -111,6 +111,7 @@ public class MuleRest {
 		if (StringUtils.isEmpty(serverOrGroupId)) {
 			serverOrGroupId = restfullyGetServerId(targetServerName);
 		}
+
 		String clusterId = null;
 		if (StringUtils.isEmpty(serverOrGroupId)) {
 			clusterId = restfullyGetClusterId(targetServerName);
