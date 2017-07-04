@@ -4,8 +4,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FilenameFilter;
 
+import org.apache.commons.lang.NullArgumentException;
 import org.apache.cxf.common.util.StringUtils;
-import wiremock.org.apache.commons.lang.NullArgumentException;
 
 public class FileFinder {
 
