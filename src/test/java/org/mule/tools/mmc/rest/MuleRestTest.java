@@ -89,7 +89,7 @@ public class MuleRestTest {
 		return json;
 	}
 
-	private String generateDeploymentRequestJson(String serverId, String name, String versionId) throws JsonGenerationException, IOException {
+	private String generateDeploymentRequestJson(String serverId, String clusterId, String name, String versionId) throws JsonGenerationException, IOException {
 		StringWriter stringWriter = new StringWriter();
 		JsonFactory jfactory = new JsonFactory();
 		JsonGenerator jsonGenerator = jfactory.createGenerator(stringWriter);
@@ -97,11 +97,20 @@ public class MuleRestTest {
 		jsonGenerator.writeStartObject();
 		jsonGenerator.writeStringField("name", name);
 
-		jsonGenerator.writeFieldName("servers");
-		jsonGenerator.writeStartArray();
-		jsonGenerator.writeString(serverId);
-		jsonGenerator.writeEndArray();
-
+		if (serverId != null) {
+			jsonGenerator.writeFieldName("servers");
+			jsonGenerator.writeStartArray();
+			jsonGenerator.writeString(serverId);
+			jsonGenerator.writeEndArray();
+		}
+		
+		if (clusterId != null) {
+			jsonGenerator.writeFieldName("clusters");
+			jsonGenerator.writeStartArray();
+			jsonGenerator.writeString(clusterId);
+			jsonGenerator.writeEndArray();
+		}
+		
 		jsonGenerator.writeFieldName("applications");
 		jsonGenerator.writeStartArray();
 		jsonGenerator.writeString(versionId);
@@ -222,6 +231,30 @@ public class MuleRestTest {
 		return json;
 	}
 
+	private String generateClustersJson(String clusterName, String clusterId) throws IOException {
+		StringWriter stringWriter = new StringWriter();
+		JsonFactory jsonFactory = new JsonFactory();
+		JsonGenerator jsonGenerator = jsonFactory.createGenerator(stringWriter);
+
+		jsonGenerator.writeStartObject();
+		jsonGenerator.writeNumberField("total", 1L);
+		jsonGenerator.writeFieldName("data");
+
+		jsonGenerator.writeStartArray();
+		jsonGenerator.writeStartObject();
+		jsonGenerator.writeStringField("name", clusterName);
+		jsonGenerator.writeStringField("id", clusterId);
+		jsonGenerator.writeEndObject();
+		jsonGenerator.writeEndArray();
+
+		jsonGenerator.writeEndObject();
+		jsonGenerator.close();
+		String json = stringWriter.toString();
+		stringWriter.close();
+
+		return json;
+	}
+	
 	private String generateUploadedPackageJson(String versionId, String applicationId) throws IOException {
 		StringWriter stringWriter = new StringWriter();
 		JsonFactory jsonFactory = new JsonFactory();
@@ -252,6 +285,10 @@ public class MuleRestTest {
 		stubFor(get(urlEqualTo("/servers")).willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withHeader("Authorization", "Basic YWRtaW46YWRtaW4=").withBody(generateServersJson(serverName, serverGroupToFind, serverId))));
 	}
 
+	private void stubGetClusters(String clusterName, String clusterId) throws IOException {
+		stubFor(get(urlEqualTo("/clusters")).willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withHeader("Authorization", "Basic YWRtaW46YWRtaW4=").withBody(generateClustersJson(clusterName, clusterId))));
+	}
+	
 	private void stubGetDeploymentIdByName(String name, String id) throws IOException {
 		stubFor(get(urlEqualTo("/deployments")).willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withHeader("Authorization", "Basic YWRtaW46YWRtaW4=").withBody(generateDeploymentIdJson(name, id))));
 	}
@@ -279,7 +316,7 @@ public class MuleRestTest {
 		verifyDeleteDeploymentById(deploymentId);
 		verifyGetDeploymentIdByName();
 		verifyGetServerGroups();
-		verifyCreateDeployment(serverId, name, versionId);
+		verifyCreateDeployment(serverId, null, name, versionId);
 	}
 
 	@Test
@@ -303,9 +340,33 @@ public class MuleRestTest {
 		verifyDeleteDeploymentById(deploymentId);
 		verifyGetDeploymentIdByName();
 		verifyGetServers();
-		verifyCreateDeployment(serverId, name, versionId);
+		verifyCreateDeployment(serverId, null, name, versionId);
 	}
 
+	@Test
+	public void testRestfullyCreateDeploymentFromClusterName() throws IOException {
+		String clusterName = UUID.randomUUID().toString();
+		String clusterId = UUID.randomUUID().toString();
+
+		String name = UUID.randomUUID().toString();
+		String versionId = UUID.randomUUID().toString();
+		String deploymentId = UUID.randomUUID().toString();
+
+		stubGetClusters(clusterName, clusterId);
+		stubGetServers(clusterName, "DummyGroup", null);
+		stubGetServerGroups(clusterName, null);
+
+		stubCreateDeployment(deploymentId);
+		stubGetDeploymentIdByName(name, deploymentId);
+		stubDeleteDeploymentById(deploymentId);
+
+		muleRest.restfullyCreateDeployment(clusterName, name, versionId);
+
+		verifyDeleteDeploymentById(deploymentId);
+		verifyGetDeploymentIdByName();
+		verifyGetClusters();
+		verifyCreateDeployment(null, clusterId, name, versionId);
+	}
 	@Test
 	public void testRestfullyDeleteDeployment() throws IOException {
 		String name = UUID.randomUUID().toString();
@@ -451,8 +512,8 @@ public class MuleRestTest {
 		assertFalse(muleRest.isSnapshotVersion("1.0"));
 	}
 
-	private void verifyCreateDeployment(String serverId, String name, String versionId) throws IOException {
-		verify(postRequestedFor(urlEqualTo("/deployments")).withHeader("Authorization", equalTo("Basic YWRtaW46YWRtaW4=")).withRequestBody(equalTo(generateDeploymentRequestJson(serverId, name, versionId))));
+	private void verifyCreateDeployment(String serverId, String clusterId, String name, String versionId) throws IOException {
+		verify(postRequestedFor(urlEqualTo("/deployments")).withHeader("Authorization", equalTo("Basic YWRtaW46YWRtaW4=")).withRequestBody(equalTo(generateDeploymentRequestJson(serverId, clusterId, name, versionId))));
 	}
 
 	private void verifyDeleteDeploymentById(String deploymentId) {
@@ -463,10 +524,13 @@ public class MuleRestTest {
 		verify(getRequestedFor(urlMatching("/deployments")).withHeader("Authorization", equalTo("Basic YWRtaW46YWRtaW4=")));
 	}
 
+	private void verifyGetClusters() {
+		verify(getRequestedFor(urlMatching("/clusters")).withHeader("Authorization", equalTo("Basic YWRtaW46YWRtaW4=")));
+	}
+	
 	private void verifyGetServers() {
 		verify(getRequestedFor(urlMatching("/servers")).withHeader("Authorization", equalTo("Basic YWRtaW46YWRtaW4=")));
 	}
-
 	private void verifyGetServerGroups() {
 		verify(getRequestedFor(urlMatching("/serverGroups")).withHeader("Authorization", equalTo("Basic YWRtaW46YWRtaW4=")));
 	}

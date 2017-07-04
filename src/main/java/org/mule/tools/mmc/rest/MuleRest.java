@@ -111,11 +111,13 @@ public class MuleRest {
 		if (StringUtils.isEmpty(serverOrGroupId)) {
 			serverOrGroupId = restfullyGetServerId(targetServerName);
 		}
+
+		String clusterId = null;
 		if (StringUtils.isEmpty(serverOrGroupId)) {
-			serverOrGroupId = restfullyGetClusterId(targetServerName);
+			clusterId = restfullyGetClusterId(targetServerName);
 		}
 
-		if (StringUtils.isEmpty(serverOrGroupId)) {
+		if (StringUtils.isEmpty(serverOrGroupId) && StringUtils.isEmpty(clusterId)) {
 			throw new IllegalArgumentException("No group, server or cluster named \"" + targetServerName + "\" found");
 		}
 
@@ -131,10 +133,18 @@ public class MuleRest {
 			JsonGenerator jGenerator = jfactory.createJsonGenerator(stringWriter);
 			jGenerator.writeStartObject(); // {
 			jGenerator.writeStringField("name", name); // "name" : name
-			jGenerator.writeFieldName("servers"); // "servers" :
-			jGenerator.writeStartArray(); // [
-			jGenerator.writeString(serverOrGroupId); // "serverId"
-			jGenerator.writeEndArray(); // ]
+			if (!StringUtils.isEmpty(serverOrGroupId)) { 
+				jGenerator.writeFieldName("servers"); // "servers" :
+				jGenerator.writeStartArray(); // [
+				jGenerator.writeString(serverOrGroupId); // "serverId"
+				jGenerator.writeEndArray(); // ]
+			}
+			if (!StringUtils.isEmpty(clusterId)) { 
+				jGenerator.writeFieldName("clusters"); // "clusters" :
+				jGenerator.writeStartArray(); // [
+				jGenerator.writeString(clusterId); // "clusterId"
+				jGenerator.writeEndArray(); // ]
+			}
 			jGenerator.writeFieldName("applications"); // "applications" :
 			jGenerator.writeStartArray(); // [
 			jGenerator.writeString(versionId); // "application version Id"
