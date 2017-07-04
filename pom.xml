@@ -1,4 +1,5 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.github.nicholasastuart</groupId>
@@ -11,12 +12,12 @@
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
-    <parent>
-        <groupId>org.sonatype.oss</groupId>
-        <artifactId>oss-parent</artifactId>
-        <version>9</version>
-    </parent>
-    
+	<parent>
+		<groupId>org.sonatype.oss</groupId>
+		<artifactId>oss-parent</artifactId>
+		<version>9</version>
+	</parent>
+
 	<scm>
 		<connection>scm:git:git@github.com:NicholasAStuart/Maven-Mule-REST-Plugin.git</connection>
 		<developerConnection>scm:git:git@github.com:NicholasAStuart/Maven-Mule-REST-Plugin.git</developerConnection>
@@ -48,7 +49,7 @@
 			<email>milhouzelatarlouze@msn.com</email>
 		</developer>
 	</developers>
-	
+
 	<contributors>
 		<contributor>
 			<name>Matt Hoffman</name>
@@ -89,14 +90,14 @@
 			<version>2.7.7</version>
 		</dependency>
 		<dependency>
-	        <groupId>org.mule</groupId>
-		    <artifactId>mule-core</artifactId>		
-	        <version>3.8.3</version>
-	        <classifier>tests</classifier>
+			<groupId>org.mule</groupId>
+			<artifactId>mule-core</artifactId>
+			<version>3.8.3</version>
+			<classifier>tests</classifier>
 		</dependency>
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
-  			<artifactId>jackson-core</artifactId>
+			<artifactId>jackson-core</artifactId>
 			<version>2.4.3</version>
 		</dependency>
 		<dependency>
@@ -114,10 +115,10 @@
 
 	<build>
 		<plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-release-plugin</artifactId>
-            </plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-release-plugin</artifactId>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
@@ -158,17 +159,17 @@
 			<activation>
 				<jdk>[1.8,)</jdk>
 			</activation>
-		<build>
-			<plugins>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-javadoc-plugin</artifactId>
-					<configuration>
-						<additionalparam>-Xdoclint:none</additionalparam>
-					</configuration>
-				</plugin>
-			</plugins>
-		</build>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-javadoc-plugin</artifactId>
+						<configuration>
+							<additionalparam>-Xdoclint:none</additionalparam>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
 		</profile>
 	</profiles>
 	<dependencyManagement>
