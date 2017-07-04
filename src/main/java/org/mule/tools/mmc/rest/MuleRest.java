@@ -111,9 +111,12 @@ public class MuleRest {
 		if (StringUtils.isEmpty(serverOrGroupId)) {
 			serverOrGroupId = restfullyGetServerId(targetServerName);
 		}
+		if (StringUtils.isEmpty(serverOrGroupId)) {
+			serverOrGroupId = restfullyGetClusterId(targetServerName);
+		}
 
 		if (StringUtils.isEmpty(serverOrGroupId)) {
-			throw new IllegalArgumentException("No group or server named \"" + targetServerName + "\" found");
+			throw new IllegalArgumentException("No group, server or cluster named \"" + targetServerName + "\" found");
 		}
 
 		// delete existing deployment before creating new one
@@ -431,6 +434,38 @@ public class MuleRest {
 		}
 	}
 
+	/**
+	 * Returns id of given cluster name or null if not found
+	 * 
+	 * @param clusterName
+	 * @return
+	 * @throws IOException
+	 */
+	public String restfullyGetClusterId(String clusterName) throws IOException {
+		_logger.trace("START: restfullyGetClusterId");
+		String clusterId = null;
+		WebClient webClient = _getWebClient("clusters");
+
+		try {
+			_logger.trace("GET");
+			Response response = webClient.get();
+			String responseText = _processResponse(response);
+			JsonNode jsonNode = OBJECT_MAPPER.readTree(responseText);
+			JsonNode clustersNode = jsonNode.path("data");
+			for (JsonNode clusterNode : clustersNode) {
+				if (clusterName.equals(clusterNode.path("name").getTextValue())) {
+					clusterId = clusterNode.path("id").getTextValue();
+					break;
+				}
+			}
+
+			return clusterId;
+		} finally {
+			webClient.close();
+			_logger.trace("END: restfullyGetClusterId");
+		}
+	}
+	
 	/**
 	 * Uploads application to the repository and returns the version id
 	 * 
