@@ -17,7 +17,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.anyString;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
@@ -33,31 +33,36 @@ import java.net.URL;
 import java.util.Set;
 import java.util.UUID;
 
-import junit.framework.Assert;
-
 import org.apache.cxf.helpers.IOUtils;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
-import org.mule.tools.mmc.rest.MuleRest;
+import org.mule.tck.junit4.rule.DynamicPort;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.junit.WireMockClassRule;
 
 public class MuleRestTest {
 
 	private static final String APPLICATION_VERSION_ID = "local$66b3cf20-6e76-4fd9-8dc6-a50a804069a0";
 
-	@Rule
-	public WireMockRule wireMockRule = new WireMockRule(12312);
+	@ClassRule
+	public static DynamicPort port = new DynamicPort("wiremock.port");
+	
+	@ClassRule
+	public static WireMockClassRule wireMockRule = new WireMockClassRule(port.getNumber());
 
+	@Rule
+	public WireMockClassRule instanceRule = wireMockRule;
+	
 	public static MuleRest muleRest;
 
 	@BeforeClass
 	public static void init() throws MalformedURLException {
-		muleRest = new MuleRest(new URL("http://0.0.0.0:12312"), "admin", "admin");
+		muleRest = new MuleRest(new URL("http://localhost:"+port.getNumber()), "admin", "admin");
 	}
 
 	private String generateDeploymentIdJson(String name, String id) throws IOException {
@@ -87,7 +92,7 @@ public class MuleRestTest {
 	private String generateDeploymentRequestJson(String serverId, String name, String versionId) throws JsonGenerationException, IOException {
 		StringWriter stringWriter = new StringWriter();
 		JsonFactory jfactory = new JsonFactory();
-		JsonGenerator jsonGenerator = jfactory.createJsonGenerator(stringWriter);
+		JsonGenerator jsonGenerator = jfactory.createGenerator(stringWriter);
 
 		jsonGenerator.writeStartObject();
 		jsonGenerator.writeStringField("name", name);
@@ -165,7 +170,7 @@ public class MuleRestTest {
 		jsonGenerator.writeStartObject();
 		jsonGenerator.writeStringField("name", applicationName);
 		jsonGenerator.writeStringField("id", "local$0edb159a-5961-4384-bdf8-6ebfc5b9d6bf");
-		jsonGenerator.writeStringField("href", "http://localhost:8080/mmc/api/repository/local$0edb159a-5961-4384-bdf8-6ebfc5b9d6bf");
+		jsonGenerator.writeStringField("href", "http://localhost:"+port.getNumber()+"/mmc/api/repository/local$0edb159a-5961-4384-bdf8-6ebfc5b9d6bf");
 
 		jsonGenerator.writeFieldName("versions");
 		jsonGenerator.writeStartArray();
@@ -339,7 +344,7 @@ public class MuleRestTest {
 
 		stubGetDeploymentIdByName(name, id);
 		String depoymentId = muleRest.restfullyGetDeploymentIdByName(name);
-		Assert.assertEquals("Deployment Id doesn't match", depoymentId, id);
+		assertEquals("Deployment Id doesn't match", depoymentId, id);
 		verifyGetDeploymentIdByName();
 	}
 
@@ -351,7 +356,7 @@ public class MuleRestTest {
 		stubFor(get(urlEqualTo("/serverGroups")).willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withHeader("Authorization", "Basic YWRtaW46YWRtaW4=").withBody(generateServerGroupIdJson(name, id))));
 
 		String groupId = muleRest.restfullyGetServerGroupId(name);
-		Assert.assertEquals("Group Id doesn't match", groupId, id);
+		assertEquals("Group Id doesn't match", groupId, id);
 
 		verify(getRequestedFor(urlMatching("/serverGroups")).withHeader("Authorization", equalTo("Basic YWRtaW46YWRtaW4=")));
 	}
@@ -363,7 +368,7 @@ public class MuleRestTest {
 
 		stubGetServers("DummyServerName", serverGroupToFind, serverId);
 		Set<String> servers = muleRest.restfullyGetServerIdsInGroup(serverGroupToFind);
-		Assert.assertTrue("Server Id doesn't match", servers.contains(serverId));
+		assertTrue("Server Id doesn't match", servers.contains(serverId));
 		verifyGetServers();
 	}
 
@@ -404,7 +409,7 @@ public class MuleRestTest {
 		stubFor(post(urlEqualTo("/repository")).willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withHeader("Authorization", "Basic YWRtaW46YWRtaW4=").withBody(generateUploadedPackageJson(versionId, applicationId))));
 
 		String returnedVersion = muleRest.restfullyUploadRepository(name, version, file);
-		Assert.assertEquals("Version Id doesn't match", versionId, returnedVersion);
+		assertEquals("Version Id doesn't match", versionId, returnedVersion);
 
 		verify(postRequestedFor(urlMatching("/repository")).withHeader("Content-Type", containing("multipart/form-data")).withHeader("Authorization", equalTo("Basic YWRtaW46YWRtaW4=")).withRequestBody(containing("Content-Type: text/plain\r\nContent-Transfer-Encoding: binary\r\nContent-ID: <name>\r\nContent-Disposition: form-data; name=\"name\"\r\n\r\n" + name + "\r\n"))
 				.withRequestBody(containing("Content-Type: text/plain\r\nContent-Transfer-Encoding: binary\r\nContent-ID: <version>\r\nContent-Disposition: form-data; name=\"version\"\r\n\r\n" + version + "\r\n"))

@@ -286,7 +286,7 @@ public class Deploy extends AbstractMojo {
 
 		this._logger.info("> Name of the deployment : " + _getStrRepr(deploymentName));
 		if (targetDeploymentServer != null) {
-			this._logger.info("> Target server or group : " + _getStrRepr(targetDeploymentServer));
+			this._logger.info("> Target group,server or cluster : " + _getStrRepr(targetDeploymentServer));
 		}
 		this._logger.debug("> Deployment timeout (ms) : " + deploymentTimeoutMs);
 	}
