@@ -126,23 +126,30 @@ public class MuleRest {
 		webClient.type(MediaType.APPLICATION_JSON_TYPE);
 		try {
 			if (deployment != null) {
+				String oldVersionId = null;
 				if (deployment.path("applications").has(0)) {
+					oldVersionId = deployment.path("id").getTextValue();
+				}
+				if (!versionId.equals(oldVersionId)) {
+					if (oldVersionId != null) {
+						webClient.path(deployment.path("id").getTextValue());
+						webClient.path("remove");
+						
+						String deploymentJson = createDeploymentJSON(name,deployment.path("lastModified").getTextValue(), deployment.path("applications").get(0).asText());
+						
+						deployment = doHttpRequest("PUT", deploymentJson, webClient);
+						
+						webClient.back(false);
+						webClient.back(false);
+					}
+					String deploymentJson = createDeploymentJSON(name, deployment.path("lastModified").getTextValue(), versionId);
 					webClient.path(deployment.path("id").getTextValue());
-					webClient.path("remove");
-					
-					String deploymentJson = createDeploymentJSON(name,deployment.path("lastModified").getTextValue(), deployment.path("applications").get(0).asText());
+					webClient.path("add");
 					
 					deployment = doHttpRequest("PUT", deploymentJson, webClient);
-					
-					webClient.back(false);
-					webClient.back(false);
+					return deployment.path("id").getTextValue();
 				}
-				String deploymentJson = createDeploymentJSON(name, deployment.path("lastModified").getTextValue(), versionId);
-				webClient.path(deployment.path("id").getTextValue());
-				webClient.path("add");
-				
-				deployment = doHttpRequest("PUT", deploymentJson, webClient);
-				return deployment.path("id").getTextValue();
+				return null;
 			}
 			else {
 				String deploymentJson = createDeploymentJSON(name, null, versionId, serverOrGroupId, clusterId);

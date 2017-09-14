@@ -244,35 +244,40 @@ public class Deploy extends AbstractMojo {
 				}
 				if (targetDeploymentServer != null) {
 					String deploymentId = muleRest.restfullyCreateDeployment(targetDeploymentServer, deploymentName, versionId);
-					muleRest.restfullyDeployDeploymentById(deploymentId);
-		
-					DeploymentState deploymentState = null;
-		
-					long startTime = System.currentTimeMillis();
-		
-					// Wait for application to be deployed
-					while (true) {
-						deploymentState = muleRest.restfullyGetDeploymentState(deploymentId);
-						if (deploymentState.status == DeploymentStatus.IN_PROGRESS) {
-							long elaspedTime = System.currentTimeMillis() - startTime;
-		
-							if (elaspedTime > this.deploymentTimeoutMs) {
-								throw new TimeoutException("Timeout of \"" + deploymentTimeoutMs + "ms\" occurred while waiting for Mule application \"" + versionId + "\" to be deployed");
+					if (deploymentId != null) {
+						muleRest.restfullyDeployDeploymentById(deploymentId);
+			
+						DeploymentState deploymentState = null;
+			
+						long startTime = System.currentTimeMillis();
+			
+						// Wait for application to be deployed
+						while (true) {
+							deploymentState = muleRest.restfullyGetDeploymentState(deploymentId);
+							if (deploymentState.status == DeploymentStatus.IN_PROGRESS) {
+								long elaspedTime = System.currentTimeMillis() - startTime;
+			
+								if (elaspedTime > this.deploymentTimeoutMs) {
+									throw new TimeoutException("Timeout of \"" + deploymentTimeoutMs + "ms\" occurred while waiting for Mule application \"" + versionId + "\" to be deployed");
+								}
+			
+								Thread.sleep(DEPLOYMENT_WAIT_SLEEP_MS);
+								continue;
+							} else if (deploymentState.status == DeploymentStatus.DEPLOYED) {
+								_logger.info("Application \"" + muleAppFile.getAbsolutePath() + "\" successfully deployed in deployment \"" + deploymentName + "\".");
+								break;
+							} else {
+								String msg = "Failed to deploy application with deployment id \"" + deploymentId + "\", unexpected deployment state \"" + deploymentState.status + "\"";
+								if (throwIfDeployFails) {
+									throw new Exception(msg);							
+								}
+								_logger.warn(msg);
+								break;
 							}
-		
-							Thread.sleep(DEPLOYMENT_WAIT_SLEEP_MS);
-							continue;
-						} else if (deploymentState.status == DeploymentStatus.DEPLOYED) {
-							_logger.info("Application \"" + muleAppFile.getAbsolutePath() + "\" successfully deployed in deployment \"" + deploymentName + "\".");
-							break;
-						} else {
-							String msg = "Failed to deploy application with deployment id \"" + deploymentId + "\", unexpected deployment state \"" + deploymentState.status + "\"";
-							if (throwIfDeployFails) {
-								throw new Exception(msg);							
-							}
-							_logger.warn(msg);
-							break;
 						}
+					}
+					else {
+						_logger.info("Application \"" + muleAppFile.getAbsolutePath() + "\" already deployed in deployment \"" + deploymentName + "\".");						
 					}
 				}
 			} catch (Exception e) {
