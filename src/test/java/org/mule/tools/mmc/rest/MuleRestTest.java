@@ -425,6 +425,7 @@ public class MuleRestTest {
 
 		String name = UUID.randomUUID().toString();
 		String versionId = UUID.randomUUID().toString();
+		String oldVersionId = UUID.randomUUID().toString();
 		String deploymentId = UUID.randomUUID().toString();
 		Date lastModified = new Date();
 
@@ -432,7 +433,7 @@ public class MuleRestTest {
 		stubGetServers(clusterName, "DummyGroup", null);
 		stubGetServerGroups(clusterName, null);
 
-		stubGetDeploymentByName(name, deploymentId, versionId, lastModified);
+		stubGetDeploymentByName(name, deploymentId, oldVersionId, lastModified);
 		stubUpdateDeploymentByRemove(deploymentId, lastModified);
 		stubUpdateDeploymentByAdd(deploymentId, lastModified);
 
@@ -440,7 +441,7 @@ public class MuleRestTest {
 
 		verifyGetDeploymentIdByName();
 		verifyGetClusters();
-		verifyUpdateDeploymentByRemove(deploymentId, name, versionId, lastModified);
+		verifyUpdateDeploymentByRemove(deploymentId, name, oldVersionId, lastModified);
 		verifyUpdateDeploymentByAdd(deploymentId, name, versionId, lastModified);
 	}	
 
