@@ -128,7 +128,7 @@ public class MuleRest {
 			if (deployment != null) {
 				String oldVersionId = null;
 				if (deployment.path("applications").has(0)) {
-					oldVersionId = deployment.path("id").getTextValue();
+					oldVersionId = deployment.path("applications").get(0).asText();
 				}
 				if (!versionId.equals(oldVersionId)) {
 					if (oldVersionId != null) {
