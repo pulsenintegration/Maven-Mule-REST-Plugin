@@ -169,6 +169,11 @@ public class Deploy extends AbstractMojo {
 	 */
 	protected boolean throwIfDeployFails = false;
 
+	/*
+	 * If true just update app version
+	 */
+	protected boolean justUpdateAppVersion = false;
+	
 	/**
 	 * If true skip execution
 	 * 
@@ -227,7 +232,14 @@ public class Deploy extends AbstractMojo {
 			try {
 				MuleRest muleRest = _createMuleRest(mmcUsername, mmcPassword, mmcApiUrl);
 	
-				String versionId = muleRest.restfullyUploadRepository(repositoryAppName, repositoryAppVersion, muleAppFile);
+				String versionId = null;
+				if (justUpdateAppVersion) {
+					versionId = muleRest.restfullyGetApplicationId(repositoryAppName, repositoryAppVersion);
+				}
+				
+				if (versionId == null) {
+					versionId = muleRest.restfullyUploadRepository(repositoryAppName, repositoryAppVersion, muleAppFile);
+				}
 				if (targetDeploymentServer != null) {
 					String deploymentId = muleRest.restfullyCreateDeployment(targetDeploymentServer, deploymentName, versionId);
 					muleRest.restfullyDeployDeploymentById(deploymentId);
