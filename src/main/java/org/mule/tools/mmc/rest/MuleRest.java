@@ -130,6 +130,7 @@ public class MuleRest {
 				if (deployment.path("applications").has(0)) {
 					oldVersionId = deployment.path("applications").get(0).asText();
 				}
+				_logger.info("oldVersionId: "+oldVersionId+", versionId: "+versionId);
 				if (!versionId.equals(oldVersionId)) {
 					if (oldVersionId != null) {
 						webClient.path(deployment.path("id").getTextValue());
@@ -171,7 +172,7 @@ public class MuleRest {
 		int retries = 0;
 		String responseText;
 		while (true) {
-			_logger.trace(method+" \n"+body);
+			_logger.info(method+" \n"+body);
 			Response response;
 			if (method.equals("POST")) {
 				response = webClient.post(body);
