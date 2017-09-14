@@ -111,7 +111,6 @@ public class MuleRest {
 		if (StringUtils.isEmpty(serverOrGroupId)) {
 			serverOrGroupId = restfullyGetServerId(targetServerName);
 		}
-
 		String clusterId = null;
 		if (StringUtils.isEmpty(serverOrGroupId)) {
 			clusterId = restfullyGetClusterId(targetServerName);
@@ -121,73 +120,109 @@ public class MuleRest {
 			throw new IllegalArgumentException("No group, server or cluster named \"" + targetServerName + "\" found");
 		}
 
-		// delete existing deployment before creating new one
-		restfullyDeleteDeployment(name);
+		JsonNode deployment = restfullyGetDeploymentByName(name, serverOrGroupId, clusterId);
 
 		WebClient webClient = _getWebClient("deployments");
 		webClient.type(MediaType.APPLICATION_JSON_TYPE);
-
 		try {
-			StringWriter stringWriter = new StringWriter();
-			JsonFactory jfactory = new JsonFactory();
-			JsonGenerator jGenerator = jfactory.createJsonGenerator(stringWriter);
-			jGenerator.writeStartObject(); // {
-			jGenerator.writeStringField("name", name); // "name" : name
-			if (!StringUtils.isEmpty(serverOrGroupId)) { 
-				jGenerator.writeFieldName("servers"); // "servers" :
-				jGenerator.writeStartArray(); // [
-				jGenerator.writeString(serverOrGroupId); // "serverId"
-				jGenerator.writeEndArray(); // ]
-			}
-			if (!StringUtils.isEmpty(clusterId)) { 
-				jGenerator.writeFieldName("clusters"); // "clusters" :
-				jGenerator.writeStartArray(); // [
-				jGenerator.writeString(clusterId); // "clusterId"
-				jGenerator.writeEndArray(); // ]
-			}
-			jGenerator.writeFieldName("applications"); // "applications" :
-			jGenerator.writeStartArray(); // [
-			jGenerator.writeString(versionId); // "application version Id"
-			jGenerator.writeEndArray(); // ]
-			jGenerator.writeEndObject(); // }
-			jGenerator.close();
-
-			int retries = 0;
-			String responseText;
-			while (true) {
-				_logger.trace("POST \n"+stringWriter.toString());
-				Response response = webClient.post(stringWriter.toString());
+			if (deployment != null) {
+				webClient.path(deployment.path("id").getTextValue());
+				webClient.path("remove");
 				
-				try {
-					responseText = _processResponse(response);
-					break;
-				} 
-				catch (HTTPException he) {
-					if (retries > 1) {
-						throw he;
-					}
-					sleep(1000);
-					_logger.info("Retrying...");
-					retries++;
-				}
+				String deploymentJson = createDeploymentJSON(name,deployment.path("lastModified").getTextValue(), deployment.path("applications").get(0).asText());
+				
+				deployment = doHttpRequest("PUT", deploymentJson, webClient);
+				deploymentJson = createDeploymentJSON(name, deployment.path("lastModified").getTextValue(), versionId);
+				
+				webClient.back(false);
+				webClient.back(false);
+				webClient.path(deployment.path("id").getTextValue());
+				webClient.path("add");
+				
+				deployment = doHttpRequest("PUT", deploymentJson, webClient);
+				return deployment.path("id").getTextValue();
 			}
-			JsonNode jsonNode = OBJECT_MAPPER.readTree(responseText);
-			String deploymentId = jsonNode.path("id").getTextValue();
-
-			_logger.info("Deployment successfully created with id \"" + deploymentId + "\"");
-
-			return deploymentId;
+			else {
+				String deploymentJson = createDeploymentJSON(name, null, versionId, serverOrGroupId, clusterId);
+	
+				JsonNode jsonNode =  doHttpRequest("POST", deploymentJson, webClient);
+				String deploymentId = jsonNode.path("id").getTextValue();
+	
+				_logger.info("Deployment successfully created with id \"" + deploymentId + "\"");
+	
+				return deploymentId;
+			}
 		} finally {
 			webClient.close();
 			_logger.trace("END: restfullyCreateDeployment");
 		}
 	}
-
-	public void restfullyDeleteDeployment(String name) throws IOException {
-		String deploymentId = restfullyGetDeploymentIdByName(name);
-		if (deploymentId != null) {
-			restfullyDeleteDeploymentById(deploymentId);
+	
+	private JsonNode doHttpRequest(String method, String body, WebClient webClient) throws IOException {
+		int retries = 0;
+		String responseText;
+		while (true) {
+			_logger.trace(method+" \n"+body);
+			Response response;
+			if (method.equals("POST")) {
+				response = webClient.post(body);
+			}
+			else if (method.equals("PUT")) {
+				response = webClient.put(body);				
+			}
+			else {
+				throw new UnsupportedOperationException(method);
+			}
+			
+			try {
+				responseText = _processResponse(response);
+				break;
+			} 
+			catch (HTTPException he) {
+				if (retries > 1) {
+					throw he;
+				}
+				sleep(1000);
+				_logger.info("Retrying...");
+				retries++;
+			}
 		}
+		return OBJECT_MAPPER.readTree(responseText);		
+	}
+	
+	private String createDeploymentJSON(String name, String lastModified, String appVersionId) throws IOException {
+		return createDeploymentJSON(name, lastModified, appVersionId, null, null);
+	}
+	
+	private String createDeploymentJSON(String name, String lastModified, String appVersionId, String serverId, String clusterId) throws IOException {
+		StringWriter stringWriter = new StringWriter();
+		JsonFactory jfactory = new JsonFactory();
+		JsonGenerator jGenerator = jfactory.createJsonGenerator(stringWriter);
+		jGenerator.writeStartObject(); // {
+		jGenerator.writeFieldName("applications"); // "applications" :
+		jGenerator.writeStartArray(); // [
+		jGenerator.writeString(appVersionId); // "application version Id"
+		jGenerator.writeEndArray(); // ]
+		if (!StringUtils.isEmpty(clusterId)) { 
+			jGenerator.writeFieldName("clusters"); // "clusters" :
+			jGenerator.writeStartArray(); // [
+			jGenerator.writeString(clusterId); // "clusterId"
+			jGenerator.writeEndArray(); // ]
+		}
+		if (lastModified != null) {
+			jGenerator.writeStringField("lastModified", lastModified); // "lastModified" : lastModified
+		}
+		jGenerator.writeStringField("name", name); // "name" : name
+		if (!StringUtils.isEmpty(serverId)) { 
+			jGenerator.writeFieldName("servers"); // "servers" :
+			jGenerator.writeStartArray(); // [
+			jGenerator.writeString(serverId); // "serverId"
+			jGenerator.writeEndArray(); // ]
+		}
+		jGenerator.writeEndObject(); // }
+		jGenerator.close();
+		
+		return stringWriter.toString();
 	}
 
 	public void restfullyDeleteDeploymentById(String deploymentId) throws IOException {
@@ -260,9 +295,15 @@ public class MuleRest {
 	 * @return
 	 * @throws IOException
 	 */
-	public String restfullyGetDeploymentIdByName(String deploymentName) throws IOException {
+	public String restfullyGetDeploymentIdByName(String deploymentName, String serverId, String clusterId) throws IOException {
 		_logger.trace("START: restfullyGetDeploymentIdByName");
 		WebClient webClient = _getWebClient("deployments");
+		if (serverId != null) {
+			webClient.query("serverId", serverId);
+		}
+		else if (clusterId != null) {
+			webClient.query("clusterId", clusterId);			
+		}
 
 		String deploymentId = null;
 		try {
@@ -285,6 +326,45 @@ public class MuleRest {
 		return deploymentId;
 	}
 
+	/**
+	 * Returns the deployment from the deployment name
+	 * 
+	 * @param deploymentName
+	 * @return
+	 * @throws IOException
+	 */
+	public JsonNode restfullyGetDeploymentByName(String deploymentName, String serverId, String clusterId) throws IOException {
+		_logger.trace("START: restfullyGetDeploymentByName");
+		WebClient webClient = _getWebClient("deployments");
+//		if (serverId != null) {
+//			webClient.query("serverId", serverId);
+//		}
+//		else if (clusterId != null) {
+//			webClient.query("clusterId", clusterId);			
+//		}
+
+		JsonNode deployment = null;
+		try {
+			_logger.trace("GET");
+			Response response = webClient.get();
+
+			String responseText = _processResponse(response);
+			JsonNode jsonNode = OBJECT_MAPPER.readTree(responseText);
+			JsonNode deploymentsNode = jsonNode.path("data");
+			for (JsonNode deploymentNode : deploymentsNode) {
+				if (deploymentName.equals(deploymentNode.path("name").getTextValue())) {
+					deployment = deploymentNode;
+					break;
+				}
+			}
+		} finally {
+			webClient.close();
+		}
+		_logger.trace("END: restfullyGetDeploymentByName");
+		return deployment;
+	}
+	
+	
 	/**
 	 * Get deployment info from deployment id
 	 * 

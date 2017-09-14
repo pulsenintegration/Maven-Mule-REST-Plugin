@@ -9,6 +9,8 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.put;
+import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
@@ -30,6 +32,10 @@ import java.io.InputStream;
 import java.io.StringWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
@@ -59,6 +65,8 @@ public class MuleRestTest {
 	public WireMockClassRule instanceRule = wireMockRule;
 	
 	public static MuleRest muleRest;
+	
+	private static DateFormat df = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss.SSS z", Locale.ENGLISH);
 
 	@BeforeClass
 	public static void init() throws MalformedURLException {
@@ -88,13 +96,59 @@ public class MuleRestTest {
 
 		return json;
 	}
+	
+	private String generateDeploymentJson(String name, String id, String versionId, Date lastModified) throws IOException {
+		StringWriter stringWriter = new StringWriter();
+		JsonFactory jsonFactory = new JsonFactory();
+		JsonGenerator jsonGenerator = jsonFactory.createGenerator(stringWriter);
 
-	private String generateDeploymentRequestJson(String serverId, String clusterId, String name, String versionId) throws JsonGenerationException, IOException {
+		jsonGenerator.writeStartObject();
+		jsonGenerator.writeNumberField("total", 1L);
+		jsonGenerator.writeFieldName("data");
+
+		jsonGenerator.writeStartArray();
+		jsonGenerator.writeStartObject();
+		jsonGenerator.writeStringField("name", name);
+		jsonGenerator.writeStringField("id", id);
+		jsonGenerator.writeStringField("lastModified", df.format(lastModified));
+		jsonGenerator.writeFieldName("applications");
+		jsonGenerator.writeStartArray();
+		jsonGenerator.writeString(versionId);
+		jsonGenerator.writeEndArray();
+		jsonGenerator.writeEndObject();
+		jsonGenerator.writeEndArray();
+
+		jsonGenerator.writeEndObject();
+		jsonGenerator.close();
+		String json = stringWriter.toString();
+		stringWriter.close();
+
+		return json;
+	}	
+
+	private String generateDeploymentRequestJson(String serverId, String clusterId, String name, String versionId, Date lastModified) throws JsonGenerationException, IOException {
 		StringWriter stringWriter = new StringWriter();
 		JsonFactory jfactory = new JsonFactory();
 		JsonGenerator jsonGenerator = jfactory.createGenerator(stringWriter);
 
 		jsonGenerator.writeStartObject();
+		
+		jsonGenerator.writeFieldName("applications");
+		jsonGenerator.writeStartArray();
+		jsonGenerator.writeString(versionId);
+		jsonGenerator.writeEndArray();
+		
+		if (clusterId != null) {
+			jsonGenerator.writeFieldName("clusters");
+			jsonGenerator.writeStartArray();
+			jsonGenerator.writeString(clusterId);
+			jsonGenerator.writeEndArray();
+		}
+
+		if (lastModified != null) {
+			jsonGenerator.writeStringField("lastModified", df.format(lastModified));
+		}
+
 		jsonGenerator.writeStringField("name", name);
 
 		if (serverId != null) {
@@ -103,18 +157,6 @@ public class MuleRestTest {
 			jsonGenerator.writeString(serverId);
 			jsonGenerator.writeEndArray();
 		}
-		
-		if (clusterId != null) {
-			jsonGenerator.writeFieldName("clusters");
-			jsonGenerator.writeStartArray();
-			jsonGenerator.writeString(clusterId);
-			jsonGenerator.writeEndArray();
-		}
-		
-		jsonGenerator.writeFieldName("applications");
-		jsonGenerator.writeStartArray();
-		jsonGenerator.writeString(versionId);
-		jsonGenerator.writeEndArray();
 
 		jsonGenerator.writeEndObject();
 		jsonGenerator.close();
@@ -125,13 +167,14 @@ public class MuleRestTest {
 		return json;
 	}
 
-	private String generateDeploymentResponseJson(String deploymentId) throws IOException {
+	private String generateDeploymentResponseJson(String deploymentId, Date lastModified) throws IOException {
 		StringWriter stringWriter = new StringWriter();
 		JsonFactory jsonFactory = new JsonFactory();
 		JsonGenerator jsonGenerator = jsonFactory.createGenerator(stringWriter);
 
 		jsonGenerator.writeStartObject();
 		jsonGenerator.writeStringField("id", deploymentId);
+		jsonGenerator.writeStringField("lastModified", df.format(lastModified));
 
 		jsonGenerator.writeEndObject();
 
@@ -274,7 +317,13 @@ public class MuleRestTest {
 	}
 
 	private void stubCreateDeployment(String deploymentId) throws IOException {
-		stubFor(post(urlEqualTo("/deployments")).willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withHeader("Authorization", "Basic YWRtaW46YWRtaW4=").withBody(generateDeploymentResponseJson(deploymentId))));
+		stubFor(post(urlEqualTo("/deployments")).willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withHeader("Authorization", "Basic YWRtaW46YWRtaW4=").withBody(generateDeploymentResponseJson(deploymentId, new Date()))));
+	}
+	private void stubUpdateDeploymentByAdd(String deploymentId, Date lastModified) throws IOException {
+		stubFor(put(urlEqualTo("/deployments/"+deploymentId+"/add")).willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withHeader("Authorization", "Basic YWRtaW46YWRtaW4=").withBody(generateDeploymentResponseJson(deploymentId, lastModified))));
+	}
+	private void stubUpdateDeploymentByRemove(String deploymentId, Date lastModified) throws IOException {
+		stubFor(put(urlEqualTo("/deployments/"+deploymentId+"/remove")).willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withHeader("Authorization", "Basic YWRtaW46YWRtaW4=").withBody(generateDeploymentResponseJson(deploymentId, lastModified))));
 	}
 
 	private void stubDeleteDeploymentById(String deploymentId) {
@@ -292,7 +341,9 @@ public class MuleRestTest {
 	private void stubGetDeploymentIdByName(String name, String id) throws IOException {
 		stubFor(get(urlEqualTo("/deployments")).willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withHeader("Authorization", "Basic YWRtaW46YWRtaW4=").withBody(generateDeploymentIdJson(name, id))));
 	}
-
+	private void stubGetDeploymentByName(String name, String id, String versionId, Date lastModified) throws IOException {
+		stubFor(get(urlEqualTo("/deployments")).willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withHeader("Authorization", "Basic YWRtaW46YWRtaW4=").withBody(generateDeploymentJson(name, id, versionId, lastModified))));
+	}
 	private void stubGetServerGroups(String name, String id) throws IOException {
 		stubFor(get(urlEqualTo("/serverGroups")).willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withHeader("Authorization", "Basic YWRtaW46YWRtaW4=").withBody(generateServerGroupIdJson(name, id))));
 	}
@@ -308,12 +359,10 @@ public class MuleRestTest {
 
 		stubGetServerGroups(serverGroupName, serverId);
 		stubCreateDeployment(deploymentId);
-		stubGetDeploymentIdByName(name, deploymentId);
-		stubDeleteDeploymentById(deploymentId);
+		stubGetDeploymentIdByName("DummyDeployment", "123456");
 
 		muleRest.restfullyCreateDeployment(serverGroupName, name, versionId);
 
-		verifyDeleteDeploymentById(deploymentId);
 		verifyGetDeploymentIdByName();
 		verifyGetServerGroups();
 		verifyCreateDeployment(serverId, null, name, versionId);
@@ -332,12 +381,10 @@ public class MuleRestTest {
 		stubGetServerGroups(serverName, null);
 
 		stubCreateDeployment(deploymentId);
-		stubGetDeploymentIdByName(name, deploymentId);
-		stubDeleteDeploymentById(deploymentId);
+		stubGetDeploymentIdByName("DummyDeployment", "123456");
 
 		muleRest.restfullyCreateDeployment(serverName, name, versionId);
 
-		verifyDeleteDeploymentById(deploymentId);
 		verifyGetDeploymentIdByName();
 		verifyGetServers();
 		verifyCreateDeployment(serverId, null, name, versionId);
@@ -357,27 +404,42 @@ public class MuleRestTest {
 		stubGetServerGroups(clusterName, null);
 
 		stubCreateDeployment(deploymentId);
-		stubGetDeploymentIdByName(name, deploymentId);
+		stubGetDeploymentIdByName("DummyDeployment", "123456");
 		stubDeleteDeploymentById(deploymentId);
 
 		muleRest.restfullyCreateDeployment(clusterName, name, versionId);
 
-		verifyDeleteDeploymentById(deploymentId);
 		verifyGetDeploymentIdByName();
 		verifyGetClusters();
 		verifyCreateDeployment(null, clusterId, name, versionId);
 	}
+	
 	@Test
-	public void testRestfullyDeleteDeployment() throws IOException {
-		String name = UUID.randomUUID().toString();
-		String deploymentId = UUID.randomUUID().toString();
+	public void testRestfullyUpdateDeploymentFromClusterName() throws IOException {
+		String clusterName = UUID.randomUUID().toString();
+		String clusterId = UUID.randomUUID().toString();
 
-		stubGetDeploymentIdByName(name, deploymentId);
-		stubDeleteDeploymentById(deploymentId);
-		muleRest.restfullyDeleteDeployment(name);
+		String name = UUID.randomUUID().toString();
+		String versionId = UUID.randomUUID().toString();
+		String deploymentId = UUID.randomUUID().toString();
+		Date lastModified = new Date();
+
+		stubGetClusters(clusterName, clusterId);
+		stubGetServers(clusterName, "DummyGroup", null);
+		stubGetServerGroups(clusterName, null);
+
+		stubGetDeploymentByName(name, deploymentId, versionId, lastModified);
+		stubUpdateDeploymentByRemove(deploymentId, lastModified);
+		stubUpdateDeploymentByAdd(deploymentId, lastModified);
+
+		muleRest.restfullyCreateDeployment(clusterName, name, versionId);
+
 		verifyGetDeploymentIdByName();
-		verifyDeleteDeploymentById(deploymentId);
-	}
+		verifyGetClusters();
+		verifyUpdateDeploymentByRemove(deploymentId, name, versionId, lastModified);
+		verifyUpdateDeploymentByAdd(deploymentId, name, versionId, lastModified);
+	}	
+
 
 	@Test
 	public void testRestfullyDeleteDeploymentById() throws IOException {
@@ -404,7 +466,7 @@ public class MuleRestTest {
 		String id = UUID.randomUUID().toString();
 
 		stubGetDeploymentIdByName(name, id);
-		String depoymentId = muleRest.restfullyGetDeploymentIdByName(name);
+		String depoymentId = muleRest.restfullyGetDeploymentIdByName(name, null, null);
 		assertEquals("Deployment Id doesn't match", depoymentId, id);
 		verifyGetDeploymentIdByName();
 	}
@@ -513,11 +575,13 @@ public class MuleRestTest {
 	}
 
 	private void verifyCreateDeployment(String serverId, String clusterId, String name, String versionId) throws IOException {
-		verify(postRequestedFor(urlEqualTo("/deployments")).withHeader("Authorization", equalTo("Basic YWRtaW46YWRtaW4=")).withRequestBody(equalTo(generateDeploymentRequestJson(serverId, clusterId, name, versionId))));
+		verify(postRequestedFor(urlEqualTo("/deployments")).withHeader("Authorization", equalTo("Basic YWRtaW46YWRtaW4=")).withRequestBody(equalTo(generateDeploymentRequestJson(serverId, clusterId, name, versionId, null))));
 	}
-
-	private void verifyDeleteDeploymentById(String deploymentId) {
-		verify(deleteRequestedFor(urlEqualTo("/deployments/" + deploymentId)).withHeader("Authorization", equalTo("Basic YWRtaW46YWRtaW4=")));
+	private void verifyUpdateDeploymentByAdd(String deploymentId, String name, String versionId, Date lastModified) throws IOException {
+		verify(putRequestedFor(urlEqualTo("/deployments/"+deploymentId+"/add")).withHeader("Authorization", equalTo("Basic YWRtaW46YWRtaW4=")).withRequestBody(equalTo(generateDeploymentRequestJson(null, null, name, versionId, lastModified))));
+	}
+	private void verifyUpdateDeploymentByRemove(String deploymentId, String name, String versionId, Date lastModified) throws IOException {
+		verify(putRequestedFor(urlEqualTo("/deployments/"+deploymentId+"/remove")).withHeader("Authorization", equalTo("Basic YWRtaW46YWRtaW4=")).withRequestBody(equalTo(generateDeploymentRequestJson(null, null, name, versionId, lastModified))));
 	}
 
 	private void verifyGetDeploymentIdByName() {
