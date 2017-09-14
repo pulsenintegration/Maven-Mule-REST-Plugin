@@ -234,10 +234,7 @@ public class Deploy extends AbstractMojo {
 			try {
 				MuleRest muleRest = _createMuleRest(mmcUsername, mmcPassword, mmcApiUrl);
 	
-				String versionId = null;
-				if (justUpdateAppVersion) {
-					versionId = muleRest.restfullyGetApplicationId(repositoryAppName, repositoryAppVersion);
-				}
+				String versionId = muleRest.restfullyGetApplicationId(repositoryAppName, repositoryAppVersion);
 				
 				if (versionId == null) {
 					versionId = muleRest.restfullyUploadRepository(repositoryAppName, repositoryAppVersion, muleAppFile);
