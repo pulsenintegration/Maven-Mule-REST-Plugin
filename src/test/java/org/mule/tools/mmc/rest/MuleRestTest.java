@@ -113,7 +113,9 @@ public class MuleRestTest {
 		jsonGenerator.writeStringField("lastModified", df.format(lastModified));
 		jsonGenerator.writeFieldName("applications");
 		jsonGenerator.writeStartArray();
-		jsonGenerator.writeString(versionId);
+		if (versionId != null) {
+			jsonGenerator.writeString(versionId);
+		}
 		jsonGenerator.writeEndArray();
 		jsonGenerator.writeEndObject();
 		jsonGenerator.writeEndArray();
@@ -135,7 +137,9 @@ public class MuleRestTest {
 		
 		jsonGenerator.writeFieldName("applications");
 		jsonGenerator.writeStartArray();
-		jsonGenerator.writeString(versionId);
+		if (versionId != null) {
+			jsonGenerator.writeString(versionId);
+		}
 		jsonGenerator.writeEndArray();
 		
 		if (clusterId != null) {
@@ -440,6 +444,29 @@ public class MuleRestTest {
 		verifyUpdateDeploymentByAdd(deploymentId, name, versionId, lastModified);
 	}	
 
+	@Test
+	public void testRestfullyUpdateEmptyDeploymentFromClusterName() throws IOException {
+		String clusterName = UUID.randomUUID().toString();
+		String clusterId = UUID.randomUUID().toString();
+
+		String name = UUID.randomUUID().toString();
+		String versionId = UUID.randomUUID().toString();
+		String deploymentId = UUID.randomUUID().toString();
+		Date lastModified = new Date();
+
+		stubGetClusters(clusterName, clusterId);
+		stubGetServers(clusterName, "DummyGroup", null);
+		stubGetServerGroups(clusterName, null);
+
+		stubGetDeploymentByName(name, deploymentId, null, lastModified);
+		stubUpdateDeploymentByAdd(deploymentId, lastModified);
+
+		muleRest.restfullyCreateDeployment(clusterName, name, versionId);
+
+		verifyGetDeploymentIdByName();
+		verifyGetClusters();
+		verifyUpdateDeploymentByAdd(deploymentId, name, versionId, lastModified);
+	}
 
 	@Test
 	public void testRestfullyDeleteDeploymentById() throws IOException {

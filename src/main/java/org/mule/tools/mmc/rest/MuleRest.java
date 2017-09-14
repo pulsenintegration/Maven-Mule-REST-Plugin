@@ -126,16 +126,18 @@ public class MuleRest {
 		webClient.type(MediaType.APPLICATION_JSON_TYPE);
 		try {
 			if (deployment != null) {
-				webClient.path(deployment.path("id").getTextValue());
-				webClient.path("remove");
-				
-				String deploymentJson = createDeploymentJSON(name,deployment.path("lastModified").getTextValue(), deployment.path("applications").get(0).asText());
-				
-				deployment = doHttpRequest("PUT", deploymentJson, webClient);
-				deploymentJson = createDeploymentJSON(name, deployment.path("lastModified").getTextValue(), versionId);
-				
-				webClient.back(false);
-				webClient.back(false);
+				if (deployment.path("applications").has(0)) {
+					webClient.path(deployment.path("id").getTextValue());
+					webClient.path("remove");
+					
+					String deploymentJson = createDeploymentJSON(name,deployment.path("lastModified").getTextValue(), deployment.path("applications").get(0).asText());
+					
+					deployment = doHttpRequest("PUT", deploymentJson, webClient);
+					
+					webClient.back(false);
+					webClient.back(false);
+				}
+				String deploymentJson = createDeploymentJSON(name, deployment.path("lastModified").getTextValue(), versionId);
 				webClient.path(deployment.path("id").getTextValue());
 				webClient.path("add");
 				
