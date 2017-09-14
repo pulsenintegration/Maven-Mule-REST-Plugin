@@ -169,8 +169,10 @@ public class Deploy extends AbstractMojo {
 	 */
 	protected boolean throwIfDeployFails = false;
 
-	/*
+	/**
 	 * If true just update app version
+	 * 
+	 * @parameter property="justUpdateAppVersion" default-value="false"
 	 */
 	protected boolean justUpdateAppVersion = false;
 	
