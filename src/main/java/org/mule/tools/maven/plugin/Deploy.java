@@ -76,6 +76,12 @@ public class Deploy extends AbstractMojo {
 	 *            default-value="${useTimestampVersion}"
 	 */
 	protected Boolean useTimestampVersion = false;
+	
+	/**
+	 * @parameter property="timestampPattern"
+	 *            default-value="${timestampPattern}"
+	 */
+	protected String timestampPattern = "yyyy-MM-dd-HH:mm:ss";
 
 	/**
 	 * If true all parameters inherited from pom.xml values are ignored
@@ -204,7 +210,7 @@ public class Deploy extends AbstractMojo {
 			String artifactVersionToUse = this.noPomMode ? muleFileInfo.appVersion : this.version;
 	
 			// Mule app version on the repository
-			String repositoryAppVersion = (this.useTimestampVersion) ? new SimpleDateFormat("MM-dd-yyyy-HH:mm:ss").format(Calendar.getInstance().getTime()) : (!StringUtils.isEmpty(this.customRepositoryAppVersion) ? this.customRepositoryAppVersion : artifactVersionToUse);
+			String repositoryAppVersion = (this.useTimestampVersion) ? new SimpleDateFormat(timestampPattern).format(Calendar.getInstance().getTime()) : (!StringUtils.isEmpty(this.customRepositoryAppVersion) ? this.customRepositoryAppVersion : artifactVersionToUse);
 	
 			// Name of the Mule app on the repository
 			String repositoryAppName = StringUtils.isEmpty(this.customRepositoryAppName) ? artifactIdToUse : this.customRepositoryAppName;
